@@ -11,7 +11,26 @@
 
 export type DemoGame = "minecraft" | "bgmi" | "gta";
 
+/**
+ * Where the "screen share" comes from.
+ *
+ * - `video`   a direct .mp4/.webm URL (your own recording, or a clip you host)
+ * - `youtube` a YouTube live or video URL — resolved to an embed at load time
+ *
+ * Free Fire, BGMI and GTA footage belongs to those games' publishers, so none
+ * of it ships in this repository. Point `screen` at a clip you own, or paste a
+ * URL into the stage at runtime (it is kept in this browser only).
+ */
+export type DemoScreen = {
+  kind: "video" | "youtube";
+  src: string;
+  /** Shown under the frame so the source is never a mystery. */
+  credit?: string;
+};
+
 export type DemoLive = {
+  /** No screen configured means the poster frame is drawn instead. */
+  screen?: DemoScreen;
   id: string;
   /** Persona. */
   name: string;
@@ -43,6 +62,11 @@ export const DEMO_LIVES: DemoLive[] = [
     game: "minecraft",
     gameLabel: "Minecraft",
     title: "Building a floating island 🌴 — survival day 12",
+    screen: {
+      kind: "video",
+      src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/06/Devtest_Minetest_5.6.1_Lava_block_2023.01.04_-_20.29.08.02.webm/Devtest_Minetest_5.6.1_Lava_block_2023.01.04_-_20.29.08.02.webm.240p.vp9.webm",
+      credit: "Voxel clip: Minetest devtest (CC BY-SA 3.0) · Wikimedia Commons",
+    },
     viewers: 214,
     startedSecondsAgo: 62 * 60 + 18,
     tags: ["minecraft", "build", "chill"],
@@ -65,6 +89,11 @@ export const DEMO_LIVES: DemoLive[] = [
     game: "bgmi",
     gameLabel: "BGMI",
     title: "Squad push to Conqueror — ranked grind, no mic rage",
+    screen: {
+      kind: "video",
+      src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/b/b9/Xonotic_0-8-2_gameplay.webm/Xonotic_0-8-2_gameplay.webm.240p.vp9.webm",
+      credit: "FPS clip: Xonotic 0.8.2 (GPL v3) · Wikimedia Commons",
+    },
     viewers: 486,
     startedSecondsAgo: 96 * 60 + 41,
     tags: ["bgmi", "ranked", "squad"],
@@ -87,6 +116,11 @@ export const DEMO_LIVES: DemoLive[] = [
     game: "gta",
     gameLabel: "GTA V",
     title: "Cayo Perico heist, no deaths, one life run",
+    screen: {
+      kind: "video",
+      src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/d/de/Tux_Racer_gameplay_%28Ingo%27s_Speedway%29.webm/Tux_Racer_gameplay_%28Ingo%27s_Speedway%29.webm.240p.vp9.webm",
+      credit: "Racing clip: Tux Racer (GPL) · Wikimedia Commons",
+    },
     viewers: 132,
     startedSecondsAgo: 27 * 60 + 5,
     tags: ["gta", "heist", "speedrun"],

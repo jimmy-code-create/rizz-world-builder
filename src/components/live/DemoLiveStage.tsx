@@ -15,6 +15,33 @@ import { RizzLiveIcon } from "@/components/live/RizzLiveIcon";
 
 type ChatLine = { id: number; user: string; text: string; tint: string; own?: boolean };
 
+/** Pull a video id out of any of YouTube's share shapes, live ones included. */
+export function youtubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com|youtube-nocookie\.com)\/(?:live|embed|shorts|watch)\/(?:v=)?([\w-]{11})/i,
+    /[?&]v=([\w-]{11})/i,
+    /youtu\.be\/([\w-]{11})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = pattern.exec(url);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function screenKey(id: string) {
+  return `rizz:demo-screen:${id}`;
+}
+
+/** A URL this browser was told to use wins over the fixture's own screen. */
+function readStoredScreen(id: string): string {
+  try {
+    return window.localStorage.getItem(screenKey(id)) ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function DemoLiveStage({ live, onClose }: { live: DemoLive; onClose: () => void }) {
   const [elapsed, setElapsed] = useState(live.startedSecondsAgo);
   const [viewers, setViewers] = useState(live.viewers);
@@ -22,6 +49,13 @@ export function DemoLiveStage({ live, onClose }: { live: DemoLive; onClose: () =
   const [lines, setLines] = useState<ChatLine[]>(() =>
     live.chat.slice(0, 3).map((line, index) => ({ id: index, ...line })),
   );
+  // Where the screen share comes from: the fixture, or a clip this browser was
+  // given at runtime. Local only — nothing is uploaded anywhere.
+  const [screenUrl, setScreenUrl] = useState(() => readStoredScreen(live.id) || live.screen?.src || "");
+  const [screenDraft, setScreenDraft] = useState("");
+  const [screenFormOpen, setScreenFormOpen] = useState(false);
+  const [mediaError, setMediaError] = useState(false);
+  const screenYoutubeId = useMemo(() => (screenUrl ? youtubeId(screenUrl) : null), [screenUrl]);
   const nextId = useRef(live.chat.length);
   const scroller = useRef<HTMLDivElement>(null);
   const reducedMotion = useMemo(
@@ -138,14 +172,37 @@ export function DemoLiveStage({ live, onClose }: { live: DemoLive; onClose: () =
             {!reducedMotion && (
               <div aria-hidden="true" className="demo-scan absolute inset-0 opacity-60" />
             )}
-            <div className="relative flex h-full w-full items-center justify-center">
-              <span
-                className="text-[74px] leading-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.55)] sm:text-[104px]"
-                aria-hidden="true"
-              >
-                {live.posterGlyph}
-              </span>
-            </div>
+            {screenUrl && screenYoutubeId ? (
+              <iframe
+                key={screenYoutubeId}
+                src={`https://www.youtube-nocookie.com/embed/${screenYoutubeId}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1`}
+                title={`${live.name} screen share`}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full border-0"
+              />
+            ) : screenUrl && !mediaError ? (
+              <video
+                key={screenUrl}
+                src={screenUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                onError={() => setMediaError(true)}
+                className="absolute inset-0 h-full w-full bg-black object-cover"
+              />
+            ) : (
+              <div className="relative flex h-full w-full items-center justify-center">
+                <span
+                  className="text-[74px] leading-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.55)] sm:text-[104px]"
+                  aria-hidden="true"
+                >
+                  {live.posterGlyph}
+                </span>
+              </div>
+            )}
 
             <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/55 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white/85 backdrop-blur">
               <Signal className="h-3 w-3 text-primary" />
@@ -172,6 +229,84 @@ export function DemoLiveStage({ live, onClose }: { live: DemoLive; onClose: () =
               </span>
             ))}
           </div>
+
+          {/* Where the picture comes from, and a way to drop in a real one. */}
+          {screenFormOpen ? (
+            <form
+              className="flex flex-col gap-2 rounded-[16px] border border-white/10 bg-surface-1 p-2.5 sm:flex-row sm:items-center"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const next = screenDraft.trim();
+                setMediaError(false);
+                setScreenUrl(next);
+                setScreenFormOpen(false);
+                try {
+                  if (next) window.localStorage.setItem(screenKey(live.id), next);
+                  else window.localStorage.removeItem(screenKey(live.id));
+                } catch {
+                  /* private mode: the clip still plays for this visit */
+                }
+              }}
+            >
+              <input
+                value={screenDraft}
+                onChange={(event) => setScreenDraft(event.target.value)}
+                placeholder="Paste an .mp4 / .webm link or a YouTube live URL"
+                aria-label="Screen share source"
+                className="h-9 min-w-0 flex-1 rounded-full border border-white/10 bg-black/30 px-3 text-[12px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary/50"
+              />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="submit"
+                  className="h-9 rounded-full bg-primary px-3.5 text-[12px] font-bold text-primary-foreground"
+                >
+                  Use this
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScreenFormOpen(false)}
+                  className="h-9 rounded-full border border-white/10 px-3 text-[12px] font-semibold text-muted-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex items-center gap-2 rounded-[14px] border border-white/10 bg-surface-1 px-3 py-2">
+              <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                {screenUrl
+                  ? live.screen?.credit ?? (screenYoutubeId ? "Your YouTube live" : "Your clip")
+                  : "No screen source — the frame below is a placeholder"}
+              </span>
+              {screenUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScreenUrl("");
+                    setMediaError(false);
+                    try {
+                      window.localStorage.removeItem(screenKey(live.id));
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                  className="shrink-0 text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setScreenDraft(screenUrl);
+                  setScreenFormOpen(true);
+                }}
+                className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-foreground"
+              >
+                {screenUrl ? "Change" : "Add real screen"}
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 rounded-[16px] border border-white/10 bg-surface-1 p-2.5">
             <button
@@ -204,8 +339,10 @@ export function DemoLiveStage({ live, onClose }: { live: DemoLive; onClose: () =
           </div>
 
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Demo live — nothing is being streamed. The frame, clock and chat are local so the live
-            surfaces can be tried without a host on air.
+            Demo live — the clip is libre gameplay footage standing in for a real host, and the
+            clock and chat are local. Point it at your own recording (or a live URL) with{" "}
+            <span className="text-foreground/80">Add real screen</span>; it is kept in this browser
+            and never uploaded.
           </p>
         </section>
 
