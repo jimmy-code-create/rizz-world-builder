@@ -8,7 +8,6 @@
  * Layer order is fixed by `catLayerStack` and never by the caller.
  */
 import { sanitizeCatConfig, shapeTransforms, type CatConfig } from "./config.ts";
-import { getCatItem } from "./catalog.ts";
 
 const FUR = "var(--fur,#17171a)";
 const FUR_DARK = "var(--fur-dark,#0d0d10)";
@@ -287,8 +286,4 @@ export function catLayerStack(input: unknown): { key: string; markup: string }[]
   ];
 
   return layers.filter((layer) => layer.markup.trim().length > 0);
-}
-
-export function itemName(id: string | null): string {
-  return getCatItem(id)?.name ?? "";
 }

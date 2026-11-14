@@ -191,3 +191,28 @@ export async function endStaleVoiceRooms(maxHostAbsenceMinutes = 10): Promise<nu
   if (error) return null;
   return (data as number) ?? null;
 }
+
+/**
+ * Cat Studio configs for a set of members.
+ *
+ * `avatar_type` / `avatar_config` arrive with pending_catstudio.sql, so this is
+ * read through an untyped client and returns an empty map before that migration
+ * runs: no cat, no error, no crash.
+ */
+export async function fetchCatAvatarConfigs(
+  userIds: (string | null | undefined)[],
+): Promise<Map<string, unknown>> {
+  const ids = [...new Set(userIds.filter((id): id is string => !!id))];
+  const map = new Map<string, unknown>();
+  if (!ids.length) return map;
+  const db = supabase as unknown as { from(table: string): any };
+  const { data, error } = await db
+    .from("profiles")
+    .select("id, avatar_type, avatar_config")
+    .in("id", ids);
+  if (error) return map;
+  for (const row of (data ?? []) as { id: string; avatar_type?: string; avatar_config?: unknown }[]) {
+    if (row.avatar_type === "cat" && row.avatar_config) map.set(row.id, row.avatar_config);
+  }
+  return map;
+}

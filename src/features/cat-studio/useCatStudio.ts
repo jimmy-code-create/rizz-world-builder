@@ -5,13 +5,13 @@
  * config are database. Until the pending migration is applied, every call here
  * reports `available: false` and the route hides itself instead of crashing.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { canUsePurify } from "@/lib/purify";
 import { toast } from "@/lib/toast";
-import { getCatItem, isCatItemId } from "./catalog";
+import { getCatItem } from "./catalog";
 import { sanitizeCatConfig, serializeCatConfig, type CatConfig } from "./config";
 import { catPngBlob } from "./renderPng";
 
@@ -26,11 +26,6 @@ type LooseClient = {
   storage: typeof supabase.storage;
 };
 const db = supabase as unknown as LooseClient;
-
-export type CatProfileFields = {
-  avatar_type?: string | null;
-  avatar_config?: unknown;
-};
 
 /** `cat_items` exists only after pending_catstudio.sql runs. */
 export function useCatAvailability() {
@@ -132,7 +127,6 @@ export function useCatStudio() {
     save,
     purify,
     balance: profile?.paw_balance ?? 0,
-    refresh: () => qc.invalidateQueries({ queryKey: ["cat-studio"] }),
   };
 }
 
@@ -150,14 +144,4 @@ function safeParse(value: string): unknown {
   } catch {
     return null;
   }
-}
-
-/** Which of the catalog ids a saved config is wearing (used by tests + UI). */
-export function equippedIds(config: CatConfig): string[] {
-  return Object.values(config.slots).filter((id): id is string => isCatItemId(id));
-}
-
-export function useOwnedIds() {
-  const studio = useCatStudio();
-  return useMemo(() => studio.inventory, [studio.inventory]);
 }

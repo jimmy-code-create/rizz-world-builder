@@ -11,6 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Check, Lock, PawPrint, RotateCcw, Shuffle, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CatAvatar } from "./CatAvatar";
+import { CatAvatar3D } from "./CatAvatar3D";
 import {
   BREED_PRESETS,
   DEFAULT_CONFIG,
@@ -162,7 +163,7 @@ export function CatStudioScreen() {
         className="flex shrink-0 items-center justify-center border-b border-white/8 bg-surface-1 px-4 py-3"
         style={{ maxHeight: "40vh" }}
       >
-        <CatAvatar config={previewConfig} animated size={240} className="h-[min(34vh,240px)] w-[min(34vh,240px)]" />
+        <CatAvatar3D config={previewConfig} size={240} className="h-[min(34vh,240px)] w-[min(34vh,240px)]" />
       </button>
 
       {/* Try-on / buy bar. */}

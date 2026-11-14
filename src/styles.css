@@ -5251,3 +5251,30 @@ body {
     display: none;
   }
 }
+
+/* Cat Studio — the 3D preview stage. Tilt is a single composited transform. */
+.cat3d {
+  perspective: 820px;
+  perspective-origin: 50% 40%;
+}
+.cat3d__stage {
+  transform-style: preserve-3d;
+  transition: transform 140ms var(--ease-soft);
+  will-change: transform;
+}
+.cat3d__floor {
+  position: absolute;
+  bottom: -4%;
+  height: 12%;
+  width: 58%;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), transparent 72%);
+  transition: transform 140ms var(--ease-soft);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat3d__stage,
+  .cat3d__floor {
+    transition: none;
+  }
+}

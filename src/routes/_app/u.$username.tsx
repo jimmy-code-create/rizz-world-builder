@@ -546,6 +546,11 @@ function ProfilePage() {
             username: profileUsername,
             displayName: profile.display_name,
             avatarUrl: profile.avatar_url,
+            catConfig:
+              (profile as { avatar_type?: string | null; avatar_config?: unknown }).avatar_type ===
+              "cat"
+                ? (profile as { avatar_config?: unknown }).avatar_config
+                : null,
             bannerUrl: profile.banner_url,
             bannerMode: profile.banner_mode,
             bannerGradient: profile.banner_gradient,

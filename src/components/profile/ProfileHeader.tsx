@@ -1,5 +1,6 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CatAvatar } from "@/features/cat-studio/CatAvatar";
 import {
   AvatarDecorationArt,
   ProfileEffectArt,
@@ -18,6 +19,8 @@ export type ProfileHeaderUser = {
   username?: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;
+  /** A saved Cat Studio config: drawn live instead of the PNG. */
+  catConfig?: unknown;
   bannerUrl?: string | null;
   bannerMode?: string | null;
   bannerGradient?: unknown;
@@ -230,12 +233,20 @@ export function ProfileHeader({
                 }}
               />
             )}
-            <Avatar className="relative z-[1] h-full w-full">
-              <AvatarImage src={avatarSrc} />
-              <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
+            {user.catConfig ? (
+              <CatAvatar
+                config={user.catConfig}
+                animated={!user.reducedMotion}
+                className="relative z-[1] h-full w-full rounded-full"
+              />
+            ) : (
+              <Avatar className="relative z-[1] h-full w-full">
+                <AvatarImage src={avatarSrc} />
+                <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
+                  {initial}
+                </AvatarFallback>
+              </Avatar>
+            )}
             {avatarRing && (
               <span
                 aria-hidden

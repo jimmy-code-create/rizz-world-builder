@@ -5,7 +5,7 @@
  * renderer and the SQL function all speak the same numbers, so a config that
  * passes `sanitizeCatConfig` renders identically in all three places.
  */
-import { CAT_ITEMS, ITEM_IDS_BY_SLOT, slotForItem } from "./catalog.ts";
+import { ITEM_IDS_BY_SLOT, slotForItem } from "./catalog.ts";
 
 export const CAT_SLOTS = ["hat", "eyewear", "neck", "face", "back", "backdrop"] as const;
 export type CatSlot = (typeof CAT_SLOTS)[number];
@@ -224,9 +224,4 @@ export function shapeTransforms(shape: CatShape) {
     eyes: { scale: s.eyeSize, gap: s.eyeSpacing * 52 },
     tail: { scale: s.tailLength, rotate: 6 + (s.tailLength - 1) * 16 },
   };
-}
-
-export function itemPrice(id: string | null): number {
-  if (!id) return 0;
-  return CAT_ITEMS.find((item) => item.id === id)?.price ?? 0;
 }
