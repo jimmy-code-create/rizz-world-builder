@@ -85,7 +85,7 @@ export function ResponsiveOverlay({
             "fixed z-[calc(var(--z-overlay,100)+1)] bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,rgba(244,241,231,0.13))] text-[var(--brand-paper,#f4f1e7)] shadow-2xl focus:outline-none",
             isMobile
               ? "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl p-5 pb-[max(env(safe-area-inset-bottom,0px)+1rem,1.25rem)] overflow-y-auto animate-in slide-in-from-bottom duration-200"
-              : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] rounded-2xl p-6 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150",
+              : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] rounded-2xl p-6 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-[260ms]",
             className,
           )}
         >

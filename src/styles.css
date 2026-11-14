@@ -5101,3 +5101,89 @@ body {
     animation: none;
   }
 }
+
+/* ============================================================================
+   FEEL — the whole app answers a beat slower, and nothing snaps
+   ----------------------------------------------------------------------------
+   The screens had been tuned for "instant", which reads as jumpy: a sheet
+   appeared in one frame, a pressed button changed in one frame, a hover landed
+   before the eye followed it. These are the defaults every control inherits.
+   The rule stays the same as the rest of the rebuild — containers move, and
+   only transform/opacity/colour animate, so a phone never repaints a list.
+   ========================================================================== */
+
+:root {
+  --dur-fast: 200ms;
+  --dur-base: 260ms;
+  --dur-slow: 340ms;
+  /* Softer than ease-out for small surfaces: starts moving immediately, then
+     settles instead of stopping dead. */
+  --ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Every interactive surface eases between states instead of jumping. */
+  a,
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="switch"],
+  summary,
+  label,
+  input,
+  textarea,
+  select {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: var(--dur-fast);
+    transition-timing-function: var(--ease-soft);
+  }
+
+  /* A press is a press: 1.5%, not a snap. Components that already set their
+     own press scale keep it — their selector is more specific. */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.985);
+  }
+
+  /* Overlays and menus open over a beat rather than on one frame. */
+  [data-state="open"].animate-in {
+    animation-duration: var(--dur-base) !important;
+    animation-timing-function: var(--ease-out) !important;
+  }
+  [data-state="closed"].animate-out {
+    animation-duration: var(--dur-fast) !important;
+    animation-timing-function: var(--ease-soft) !important;
+  }
+}
+
+/* Screen changes get the slower end of the scale. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a,
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="switch"],
+  summary,
+  label,
+  input,
+  textarea,
+  select {
+    transition-duration: 1ms;
+  }
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
