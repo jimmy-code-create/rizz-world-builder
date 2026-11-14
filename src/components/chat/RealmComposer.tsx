@@ -6,18 +6,19 @@ import {
   useMemo,
   useRef,
   useState,
+  type RefObject,
 } from "react";
-import { BarChart3, CalendarClock, Camera, Folder, ImagePlus, Send, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { MessageComposer, type ComposerReply } from "@/components/chat/MessageComposer";
+
+import {
+  ChatComposer,
+  type ComposerReply,
+  type PendingComposerFile,
+} from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { parseEmojiToken, type EmojiTokenParts } from "@/lib/emoji-token";
-import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
-import { GifPicker } from "@/components/GifPicker";
-import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
 import {
   filterSlashCommands,
   insertSlashCommand,
@@ -25,6 +26,13 @@ import {
   type RealmSlashCommand,
 } from "@/lib/bot-commands";
 import { toast } from "@/lib/toast";
+import {
+  makeChatFileDraft,
+  releaseChatFileDraft,
+  uploadChatFileDraft,
+  type ChatFileDraft,
+} from "@/lib/chat-files";
+import { formatUploadLimit } from "@/lib/purify";
 import { AnimatePresence } from "framer-motion";
 
 export type RealmComposerHandle = {
@@ -47,15 +55,21 @@ export type RealmComposerProps = {
   memberIds?: string[];
   commands?: RealmSlashCommand[];
   commandsLoading?: boolean;
-  onSend: (args: { text: string; files: File[] }) => Promise<boolean>;
+  onSend: (args: { text: string; files: ChatFileDraft[] }) => Promise<boolean>;
   onManageEmoji?: () => void;
   onPoll?: () => void;
   onSchedule?: (draft: string) => void;
   onInputFocus?: () => void;
   /** Photos already in this channel, newest first: the attach sheet's library. */
   photos?: { id: string; url: string }[];
+  /** Current member's avatar for the composer's sticker button. */
+  avatarUrl?: string | null;
+  /** Per-file upload ceiling for this viewer. */
+  uploadLimit?: number;
   /** Quote strip above the row: replying to a message in this channel. */
   reply?: ComposerReply | null;
+  /** The transcript scroller, so the dock keeps it pinned to the newest row. */
+  scrollRef?: RefObject<HTMLDivElement | null>;
 };
 
 const MAX_ATTACHMENTS = 10;
@@ -66,8 +80,10 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
       realmId,
       realmName = "",
       photos = [],
+      avatarUrl = null,
+      uploadLimit = Number.POSITIVE_INFINITY,
       channelKey: _channelKey,
-      userId: _userId,
+      userId,
       joined = true,
       sending = false,
       composerBlock = false,
@@ -81,22 +97,18 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
       onSchedule,
       onInputFocus,
       reply = null,
+      scrollRef,
     },
     ref,
   ) {
     const [body, setBody] = useState("");
-    const [attachments, setAttachments] = useState<File[]>([]);
-    const [previews, setPreviews] = useState<string[]>([]);
+    const [attachments, setAttachments] = useState<ChatFileDraft[]>([]);
     const [caret, setCaret] = useState(0);
     const [slashIndex, setSlashIndex] = useState(0);
     const [slashHidden, setSlashHidden] = useState(false);
-    const [gifOpen, setGifOpen] = useState(false);
-    const [catOpen, setCatOpen] = useState(false);
 
     const inputRef = useRef<ComposerInputHandle | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
-    const filesInputRef = useRef<HTMLInputElement>(null);
+    const objectUrlsRef = useRef(new Set<string>());
 
     /**
      * One source for the inline images the composer draws: the same cached list
@@ -162,28 +174,75 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
         },
       }),
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      [body, previews],
+      [body, attachments],
     );
 
-    useEffect(() => {
-      return () => {
-        previews.forEach((url) => URL.revokeObjectURL(url));
-      };
-    }, [previews]);
+    useEffect(
+      () => () => {
+        objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      },
+      [],
+    );
 
-    const addFiles = useCallback((files: FileList | File[] | null) => {
-      if (!files) return;
-      const arr = Array.from(files).filter(
-        (f) => f.type.startsWith("image/") || f.type.startsWith("video/"),
-      );
-      if (!arr.length) {
-        toast.error("Choose an image or video file.");
-        return;
-      }
-      setAttachments((prev) => [...prev, ...arr].slice(0, MAX_ATTACHMENTS));
-      const newUrls = arr.map((f) => URL.createObjectURL(f));
-      setPreviews((prev) => [...prev, ...newUrls].slice(0, MAX_ATTACHMENTS));
-    }, []);
+    const uploadDraft = useCallback(
+      async (draft: ChatFileDraft) => {
+        if (!userId) return;
+        try {
+          const result = await uploadChatFileDraft(draft, userId, (progress) =>
+            setAttachments((current) =>
+              current.map((file) => (file.id === draft.id ? { ...file, progress } : file)),
+            ),
+          );
+          setAttachments((current) =>
+            current.map((file) =>
+              file.id === draft.id ? { ...file, ...result, progress: 100, status: "ready" } : file,
+            ),
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Couldn't upload that file.";
+          setAttachments((current) =>
+            current.map((file) =>
+              file.id === draft.id ? { ...file, status: "error", error: message } : file,
+            ),
+          );
+          toast.error(message);
+        }
+      },
+      [userId],
+    );
+
+    const addFiles = useCallback(
+      (input: FileList | File[] | null) => {
+        if (!input) return;
+        const files = Array.from(input);
+        if (!files.length) return;
+        const accepted: ChatFileDraft[] = [];
+        for (const file of files) {
+          if (file.size > uploadLimit) {
+            toast.error(`${file.name || "That file"} is too large to upload.`);
+            continue;
+          }
+          const draft = makeChatFileDraft(file);
+          if (draft.preview) objectUrlsRef.current.add(draft.preview);
+          accepted.push(draft);
+        }
+        if (!accepted.length) return;
+        const room = Math.max(0, MAX_ATTACHMENTS - attachments.length);
+        if (!room) {
+          toast.error(`You can attach up to ${MAX_ATTACHMENTS} files at once.`);
+          accepted.forEach(releaseChatFileDraft);
+          return;
+        }
+        const batch = accepted.slice(0, room);
+        if (batch.length < accepted.length) {
+          toast.error(`You can attach up to ${MAX_ATTACHMENTS} files at once.`);
+          accepted.slice(room).forEach(releaseChatFileDraft);
+        }
+        setAttachments((prev) => [...prev, ...batch]);
+        batch.forEach((draft) => void uploadDraft(draft));
+      },
+      [attachments.length, uploadLimit, uploadDraft],
+    );
 
     /** Send an attachment that is already in this channel: the sheet library. */
     const pickRecentPhoto = useCallback(
@@ -204,37 +263,22 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
       [addFiles],
     );
 
-    const removeAttachment = useCallback((index: number) => {
-      setAttachments((prev) => prev.filter((_, i) => i !== index));
-      setPreviews((prev) => {
-        if (prev[index]) URL.revokeObjectURL(prev[index]);
-        return prev.filter((_, i) => i !== index);
-      });
-    }, []);
+    const removeAttachment = useCallback(
+      (index: number) => {
+        const target = attachments[index];
+        if (target) {
+          releaseChatFileDraft(target);
+          objectUrlsRef.current.delete(target.preview ?? "");
+        }
+        setAttachments((prev) => prev.filter((_, i) => i !== index));
+      },
+      [attachments],
+    );
 
     const clearAttachments = useCallback(() => {
-      previews.forEach((url) => URL.revokeObjectURL(url));
+      attachments.forEach(releaseChatFileDraft);
       setAttachments([]);
-      setPreviews([]);
-    }, [previews]);
-
-    const handlePaste = useCallback(
-      (e: React.ClipboardEvent<Element>) => {
-        const items = e.clipboardData?.items;
-        if (!items) return;
-        const pastedFiles: File[] = [];
-        for (let i = 0; i < items.length; i++) {
-          if (items[i].type.startsWith("image/") || items[i].type.startsWith("video/")) {
-            const f = items[i].getAsFile();
-            if (f) pastedFiles.push(f);
-          }
-        }
-        if (pastedFiles.length) {
-          addFiles(pastedFiles);
-        }
-      },
-      [addFiles],
-    );
+    }, [attachments]);
 
     const slashQuery = parseSlashCommand(body);
     const slashMatches = slashQuery ? filterSlashCommands(commands, slashQuery.name) : [];
@@ -264,21 +308,38 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
     const submit = async () => {
       if (composerBlock || sending) return;
       if (!body.trim() && !attachments.length) return;
-      // Clear the row before the network round trip. The draft comes back only
-      // if the send actually failed, so typing the next message never waits on
-      // Supabase.
+      if (attachments.some((file) => file.status === "uploading")) {
+        toast.info("One moment — the upload is still finishing");
+        return;
+      }
+      const outgoingFiles = attachments.filter((file) => file.status === "ready" && file.url);
+      if (attachments.length && !outgoingFiles.length) {
+        toast.error("Remove the failed file and try again.");
+        return;
+      }
+      // Clear the row before the network round trip; the payload is already
+      // uploaded, so this is a fast insert.
       const outgoingBody = body;
-      const outgoingFiles = attachments;
       setBody("");
       setCaret(0);
       setSlashIndex(0);
       setSlashHidden(false);
-      clearAttachments();
+      setAttachments([]);
       const success = await onSend({ text: outgoingBody, files: outgoingFiles });
-      if (!success) {
+      if (success) {
+        outgoingFiles.forEach(releaseChatFileDraft);
+      } else {
         setBody((current) => (current ? current : outgoingBody));
-        if (outgoingFiles.length) addFiles(outgoingFiles);
+        if (outgoingFiles.length) {
+          setAttachments((current) => (current.length ? current : outgoingFiles));
+        }
       }
+    };
+
+    const sendMarker = async (marker: string) => {
+      if (composerBlock || sending) return;
+      const success = await onSend({ text: marker, files: [] });
+      if (!success) toast.error("Couldn't send that sticker.");
     };
 
     const disabled = composerBlock || !!writeBlockedNote;
@@ -288,42 +349,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
 
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          hidden
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.currentTarget.value = "";
-          }}
-        />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*,video/*"
-          capture="environment"
-          hidden
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.currentTarget.value = "";
-          }}
-        />
-        {/* Photos comes from the library; Files opens the device's own file
-            browser for the same images and clips. */}
-        <input
-          ref={filesInputRef}
-          type="file"
-          accept="image/*,video/*"
-          hidden
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.currentTarget.value = "";
-          }}
-        />
-
-        <MessageComposer
+        <ChatComposer
           value={body}
           onChange={(next, nextCaret) => {
             setBody(next);
@@ -332,8 +358,27 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
             setCaret(nextCaret);
           }}
           onSend={() => void submit()}
-          onEmoji={() => setGifOpen(true)}
-          onStickers={() => setCatOpen(true)}
+          onPickEmoji={(token) => {
+            const parsed = parseEmojiToken(token);
+            const el = inputRef.current;
+            if (!el) return;
+            el.insertEmoji(token, parsed);
+            const next = el.getValue() ?? body;
+            setBody(next);
+            setCaret(next.length);
+          }}
+          onSendMarker={(marker) => void sendMarker(marker)}
+          onFilesSelected={(files) => addFiles(files)}
+          pendingFiles={attachments as PendingComposerFile[]}
+          onRemovePendingFile={removeAttachment}
+          avatarUrl={avatarUrl}
+          scrollRef={scrollRef}
+          onManageEmoji={onManageEmoji}
+          recentPhotos={photos}
+          onPickRecentPhoto={(url) => void pickRecentPhoto(url)}
+          onPoll={onPoll}
+          onSchedule={onSchedule ? () => onSchedule(body) : undefined}
+          scheduleDisabled={!body.trim()}
           disabled={disabled}
           disabledHint={disabledHint}
           placeholder={placeholder}
@@ -344,86 +389,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
           reply={reply}
           canSend={Boolean(body.trim() || attachments.length)}
           allowVoice={false}
-          onPaste={handlePaste}
-          above={
-            previews.length > 0 ? (
-              <div className="mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-                {previews.map((preview, i) => (
-                  <div
-                    key={i}
-                    className="relative h-14 w-14 overflow-hidden rounded-lg border border-white/10"
-                  >
-                    <img src={preview} alt="Attachment" className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(i)}
-                      className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white/80 hover:text-white"
-                      aria-label="Remove attachment"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                  Ready to send
-                </span>
-              </div>
-            ) : null
-          }
-          attach={
-            <ChatAttachButton
-              appearance="circle"
-              disabled={disabled}
-              actions={[
-                {
-                  id: "photo",
-                  label: "Photos",
-                  hint: "Your library",
-                  icon: ImagePlus,
-                  onSelect: () => fileInputRef.current?.click(),
-                },
-                {
-                  id: "camera",
-                  label: "Camera",
-                  hint: "Take a shot",
-                  icon: Camera,
-                  onSelect: () => cameraInputRef.current?.click(),
-                },
-                {
-                  id: "files",
-                  label: "Files",
-                  hint: "Browse device",
-                  icon: Folder,
-                  onSelect: () => filesInputRef.current?.click(),
-                },
-                ...(onPoll
-                  ? [
-                      {
-                        id: "poll",
-                        label: "Poll",
-                        hint: "Ask the room",
-                        icon: BarChart3,
-                        onSelect: onPoll,
-                      },
-                    ]
-                  : []),
-                ...(onSchedule
-                  ? [
-                      {
-                        id: "schedule",
-                        label: "Schedule",
-                        hint: "Send later",
-                        icon: CalendarClock,
-                        onSelect: () => onSchedule(body),
-                        disabled: !body.trim(),
-                      },
-                    ]
-                  : []),
-              ]}
-              photos={photos}
-              onPickPhoto={(url) => void pickRecentPhoto(url)}
-            />
-          }
+          onPasteFiles={(files) => addFiles(files)}
           mentions={
             <MentionAutocomplete
               value={body}
@@ -481,46 +447,6 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
             onInputFocus?.();
           }}
           onFocus={onInputFocus}
-        />
-
-        <GifPicker
-          hideTrigger
-          triggerClassName="h-11 w-11"
-          open={gifOpen}
-          onOpenChange={setGifOpen}
-          realmId={realmId}
-          initialTab="emoji"
-          keepOpenOnPick={false}
-          onSelect={(marker) => {
-            // Custom emoji (and cat shortcodes) go in as pictures at the caret,
-            // not appended to the end of the draft. GIF and sticker markers are
-            // still plain legacy text.
-            const parsed = parseEmojiToken(marker);
-            if (parsed) {
-              inputRef.current?.insertEmoji(marker, parsed);
-              const next = inputRef.current?.getValue() ?? body;
-              setBody(next);
-              setCaret(next.length);
-              return;
-            }
-            if (marker.startsWith(":") && !marker.startsWith(":cat")) {
-              inputRef.current?.insertText(marker);
-              const next = inputRef.current?.getValue() ?? body;
-              setBody(next);
-              return;
-            }
-            setBody((current) => `${current}${current ? " " : ""}${marker}`);
-          }}
-          onCustomEmoji={onManageEmoji}
-        />
-        <CatStickerSheet
-          open={catOpen}
-          onOpenChange={setCatOpen}
-          onPick={(shortcode) =>
-            setBody(
-              (current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${shortcode} `,
-            )
-          }
         />
       </div>
     );

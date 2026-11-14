@@ -52,62 +52,55 @@ await check("the comment box shows the writer's face, not a letter", () => {
   );
 });
 
-await check("realm composers can send photos and videos, and paste an image", () => {
+await check("realm composers can send photos, videos and files, and paste media", () => {
+  const files = read("src/lib/chat-files.ts");
+  const shared = read("src/components/chat/MessageComposer.tsx");
   assert.match(realmComposer, /const MAX_ATTACHMENTS = 10;/);
-  assert.match(realmComposer, /onPaste=\{handlePaste\}/);
-  assert.match(realmComposer, /file\.type\.startsWith\("video\/"\)/);
-  assert.match(realmComposer, /Ready to send/);
-  assert.ok(!realmComposer.includes("compresses before upload"), "compression is not the user's problem");
-  assert.match(library, /accept="image\/\*,video\/\*"/);
-  assert.match(realm, /compressChatImage\(file\)/);
-  assert.match(realm, /\.from\("chat-media"\)/);
-  assert.match(realm, /sendRealmRoomMessage\(activeRoomId, user\.id, text\.trim\(\), first \?\? null\)/);
-  assert.match(realm, /sendRealmMessage\(c\.id, user\.id, text\.trim\(\), first \?\? null\)/);
+  assert.match(realmComposer, /onPasteFiles=\{\(files\) => addFiles\(files\)\}/);
+  assert.match(files, /startsWith\("video\/"\)/);
+  assert.match(files, /compressChatImage/);
+  assert.match(files, /\.from\("chat-media"\)/);
+  assert.match(shared, /chat-pending-file/);
+  assert.match(realm, /sendRealmRoomMessage\([\s\S]{0,180}?first\?\.url \?\? null/);
+  assert.match(realm, /sendRealmMessage\(c\.id, user\.id, text\.trim\(\), first\?\.url \?\? null/);
 });
 
-await check("the + is the Rizz Library in a realm, with every old action still reachable", () => {
+await check("the + opens the shared dock with every realm action", () => {
+  const panel = read("src/components/chat/ChatDockPanel.tsx");
   assert.match(realm, /<RealmComposer/);
-  assert.match(realmComposer, /<ChatAttachButton[\s\S]{0,300}?library=\{\{/);
-  assert.match(realmComposer, /label: "Poll"/);
-  assert.match(realmComposer, /label: "Schedule"/);
-  assert.match(library, /Take a photo or video/);
-  assert.match(library, /Upload from device/);
-  assert.match(library, />\s*Files\s*</);
+  assert.match(realmComposer, /<ChatComposer/);
+  assert.match(panel, /label="Poll"/);
+  assert.match(panel, /label="Schedule"/);
+  assert.match(panel, /label="Photos"/);
+  assert.match(panel, /label="Camera"/);
+  assert.match(panel, /label="Files"/);
 });
 
-await check("the attach sheet opens on the chat's photo library, actions underneath", () => {
-  assert.match(attach, /export function ChatAttachButton\(/);
-  assert.match(attach, /<Plus className="h-4 w-4" \/>/, "it wears the + people know");
-  assert.match(attach, /rounded-xl border border-white\/10 bg-white\/\[0\.04\]/, "the trigger is a square tile");
-  assert.match(attach, /photos\?: ChatAttachPhoto\[\]/, "it takes the photos already in the chat");
-  assert.match(attach, /onPickPhoto\?: \(url: string\) => void/, "one tap sends one again");
-  assert.match(attach, /aspect-square/, "library tiles are squares");
-  assert.match(attach, /grid-cols-3/, "three tiles to a row");
-  assert.match(attach, /aria-label="Take a photo"/, "the camera leads the grid");
-  assert.match(attach, /rounded-3xl border border-white\/\[0\.08\]/, "the actions sit in one bar");
-  assert.ok(!attach.includes("onInsertSticker"), "the library sub-view is gone");
-  assert.ok(!attach.includes("RIZZ_PACKS"), "the sheet no longer imports the emoji packs");
+await check("the attach dock opens on the chat's media, actions underneath", () => {
+  const panel = read("src/components/chat/ChatDockPanel.tsx");
+  assert.match(panel, /chat-dock-camera-tile/, "the camera leads the grid");
+  assert.match(panel, /aria-label="Take a photo"/);
+  assert.match(panel, /grid-cols-4/, "recent media tiles are squares");
+  assert.match(panel, /recentPhotos\.map/, "it takes the photos already in the chat");
+  assert.match(panel, /onPickRecentPhoto\?\.\(photo\.url\)/, "one tap sends one again");
   for (const source of [realm, group, dm]) {
-    assert.ok(!source.includes("insertRizzItem"), "no composer still wires the library");
+    assert.ok(!source.includes("insertRizzItem"), "no composer still wires the old library");
   }
-  // The curated reaction set moved into the shared reactions module; the
-  // library's packs, search and insert helpers are gone with their only user.
   assert.match(reactions, /export const RIZZ_REACTIONS/);
-  // Every chat opens the same library, and every chat can reach the device's
-  // own file browser next to its photo library.
-  assert.match(dm, /photos=\{recentPhotos\}/);
-  assert.match(group, /photos=\{recentPhotos\}/);
-  assert.match(realm, /photos=\{recentPhotos\}/);
-  assert.match(realmComposer, /photos=\{photos\}/);
-  for (const [name, source] of [["dms", dm], ["groups", group], ["realms", realmComposer]]) {
-    assert.match(source, /label: "Files"/, `${name} can browse files`);
-    assert.match(source, /label: "Photos"/, `${name} can pick from the library`);
+  // Every chat hands the dock the media already sent in that conversation.
+  assert.match(dm, /recentPhotos=\{recentPhotos\}/);
+  assert.match(group, /recentPhotos=\{recentPhotos\}/);
+  assert.match(realmComposer, /recentPhotos=\{photos\}/);
+  for (const label of ["Photos", "Camera", "Files", "Schedule"]) {
+    assert.ok(panel.includes(`label="${label}"`), `the dock offers ${label}`);
   }
 });
 
 await check("groups and realms can start a poll, DMs only read legacy ones", () => {
-  assert.match(realmComposer, /label: "Poll"/, "realms offer a poll from the library pill");
-  assert.match(group, /label: "Poll"/, "groups offer a poll from the +");
+  const panel = read("src/components/chat/ChatDockPanel.tsx");
+  assert.match(panel, /label="Poll"/, "the dock offers a poll");
+  assert.match(realmComposer, /onPoll=\{onPoll\}/, "realms wire the poll action");
+  assert.match(group, /onPoll=\{\(\) => setPollOpen\(true\)\}/, "groups wire the poll action");
   for (const [name, source] of [["groups", group], ["realms", realm]]) {
     assert.match(source, /<PollDialog/, `${name} mount the poll dialog`);
   }
@@ -135,13 +128,16 @@ await check("groups and realms can start a poll, DMs only read legacy ones", () 
 });
 
 await check("replying opens the keyboard and re-pins the chat", () => {
-  // Discord: reply is a composer state, so the box takes focus (keyboard up)
-  // and the list follows the viewport while it settles.
-  assert.match(dm, /useEffect\(\(\) => \{\s*if \(!replyTo\) return;\s*composerRef\.current\?\.focus\(\{ preventScroll: true \}\);\s*scrollChatToLatest\(scrollRef\.current\);/);
-  assert.match(group, /composerRef\.current\?\.focus\(\{ preventScroll: true \}\);\s*scrollChatToLatest\(messagesListRef\.current\);/);
+  const shared = read("src/components/chat/MessageComposer.tsx");
+  assert.match(
+    shared,
+    /if \(reply && !hadReply\.current\) \{[\s\S]{0,100}?field\.current\?\.focus\(\)/,
+    "the shared composer focuses the field for a new quote",
+  );
+  assert.match(shared, /aria-label="Cancel reply"/);
+  assert.match(dm, /if \(!replyTo\) return;\s*composerRef\.current\?\.focus\(\);\s*scrollChatToLatest\(scrollRef\.current\)/);
+  assert.match(group, /if \(!replyTo\) return;\s*composerRef\.current\?\.focus\(\);\s*scrollChatToLatest\(messagesListRef\.current\)/);
   assert.match(group, /label: "Reply",\s*icon: CornerUpLeft/);
-  assert.match(group, /const quoted = replyTo \? `↪ \$\{replyTo\.body\.slice\(0, 120\)\}\\n` : "";/);
-  assert.match(group, /aria-label="Cancel reply"/);
 });
 
 await check("a photo caption is never parsed as a slash command", () => {
@@ -152,9 +148,9 @@ await check("a photo can be sent with no text at all", () => {
   assert.match(realm, /if \(!user \|\| \(!text\.trim\(\) && !files\.length\)\) return false;/);
   assert.match(
     realmComposer,
-    /disabled=\{blocked \|\| \(!text\.trim\(\) && !attachments\.length\)\}/,
+    /canSend=\{Boolean\(body\.trim\(\) \|\| attachments\.length\)\}/,
   );
-  assert.match(library, /accept="image\/\*,video\/\*"/);
+  assert.match(read("src/components/chat/MessageComposer.tsx"), /accept="image\/\*,video\/\*"/);
   assert.match(realm, /chatUploadLimitBytes\(myProfile\)/);
 });
 
@@ -170,38 +166,37 @@ await check("both realm inserts carry attachment_url when there is one", () => {
 });
 
 await check("every chat composer opens the same + control", () => {
+  const shared = read("src/components/chat/MessageComposer.tsx");
   for (const [name, source] of [["DMs", dm], ["groups", group]]) {
-    assert.match(source, /<ChatAttachButton/, `${name} use the shared + sheet`);
-    assert.match(source, /label: "Photo"/, `${name} can pick a photo`);
-    assert.match(source, /label: "Camera"/, `${name} can use the camera`);
-    assert.match(source, /capture="environment"/, `${name} wire the lens`);
-    assert.match(source, /accept="image\/\*"/, `${name} accept images`);
+    assert.match(source, /<ChatComposer/, `${name} use the shared composer`);
+    assert.match(source, /onFilesSelected=\{addFiles\}/, `${name} hand picked files to the uploader`);
   }
-  assert.match(realmComposer, /<ChatAttachButton/, "realms use the shared + control");
-  assert.match(library, /capture="environment"/, "the camera opens the lens in the library");
+  assert.match(realmComposer, /<ChatComposer/, "realms use the shared composer");
+  assert.match(shared, /onClick=\{\(\) => openPanel\("attach"\)\}/, "one + opens the dock");
+  assert.match(shared, /ref=\{cameraRef\}[\s\S]{0,120}?capture="environment"/, "the lens opens from the dock");
+  assert.match(shared, /accept="image\/\*"/, "the camera input accepts images");
+  assert.match(shared, /<input ref=\{filesRef\} type="file" multiple hidden/, "files accept anything");
 });
 
 await check("composer rows share one height", () => {
-  assert.match(gif, /triggerClassName\?: string/);
-  assert.match(gif, /className=\{`shrink-0 text-primary \$\{triggerClassName \?\? ""\}`\}/);
-  assert.match(realmComposer, /triggerClassName="h-11 w-11"/, "the picker matches a 44px row");
-  assert.match(attach, /grid h-11 w-11 shrink-0 place-items-center rounded-xl/);
-  assert.match(dm, /<ChatAttachButton\s*className="h-9 w-9"/, "DM's composer is a 36px row");
-  assert.match(group, /<ChatAttachButton\s*className="h-9 w-9"/, "groups match it");
-  assert.match(realmComposer, /className="h-11 w-11 shrink-0 border-0 bg-primary/);
-  assert.match(composer, /triggerClassName=\{compact \? "h-9 w-9" : "h-10 w-10"\}/);
+  const shared = read("src/components/chat/MessageComposer.tsx");
+  const styles = read("src/styles.css");
+  assert.match(shared, /grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/, "the + is a 40px disc");
+  assert.match(shared, /chat-composer-avatar/, "the sticker button is the member's face");
+  assert.match(styles, /\.chat-composer-avatar \{[\s\S]{0,120}?width: 36px/, "36px, per the dock design");
+  assert.match(shared, /grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/, "send is 40px");
+  assert.match(composer, /triggerClassName=\{compact \? "h-9 w-9" : "h-10 w-10"\}/, "the comment box still matches its row");
 });
 
-await check("the cat set stays one silhouette with per-face features", () => {
-  assert.ok(!/<text/.test(cat), "no text glyphs — a phone font would move the z's");
-  for (const hook of ["fx-heart", "fx-glint", "fx-z", "fx-z2", "fx-pupil", "fx-slide", "fx-flick", "fx-crown", "fx-tear", "fx-paw", "fx-dot1", "fx-dot2", "fx-dot3"]) {
-    assert.ok(cat.includes(hook), `${hook} keeps its animation hook`);
-  }
+await check("the cat set is still artwork with one loop budget", () => {
+  const manifest = read("src/components/emoji/cat-emoji-manifest.ts");
+  assert.ok(!/<text/.test(cat), "no text glyphs — the faces are artwork");
+  assert.match(cat, /catImageForName/, "every face resolves through the manifest");
   for (const name of [
     "cat_love", "cat_cool", "cat_sleep", "cat_lol", "cat_wow", "cat_sus",
     "cat_music", "cat_hype", "cat_gg", "cat_sad", "cat_wave", "cat_think",
   ]) {
-    assert.ok(cat.includes(`case "${name}":`), `${name} is drawn`);
+    assert.ok(manifest.includes(name), `${name} exists`);
   }
 });
 

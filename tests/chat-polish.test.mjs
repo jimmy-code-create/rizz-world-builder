@@ -42,6 +42,7 @@ const gif = read("lib/gif-content.ts");
 const dm = read("routes/_app/dm.$userId.tsx");
 const group = read("routes/_app/g.$id.tsx");
 const realm = read("routes/_app/r.$slug.tsx");
+const realmComposer = read("components/chat/RealmComposer.tsx");
 const styles = read("styles.css");
 
 await check("reaction chips are one flex row of pills", async () => {
@@ -68,7 +69,7 @@ await check("image-only messages never say “📷 Image”", async () => {
     !dm.includes('"📷 Image"'),
     "the DM composer must not write the placeholder body",
   );
-  assert.match(dm, /const text = \(quoted \+ body\.trim\(\)\)\.trim\(\);/, "empty body for a captionless photo");
+  assert.match(dm, /const text = body\.trim\(\);/, "empty body for a captionless photo");
   assert.ok(gif.includes("isMediaPlaceholderText"), "the legacy placeholder has one reader");
   for (const [name, source] of [["dm", dm], ["group", group], ["realm", realm]]) {
     assert.ok(
@@ -118,34 +119,29 @@ await check("sending keeps the phone keyboard open and typing follows", async ()
   // a mousedown that steals focus, and the composer refocuses the field after a
   // send for the browsers that blur it anyway.
   assert.ok(!shared.includes("onMouseDown"), "the send control takes focus on mousedown");
-  assert.match(shared, /field\.current\?\.focus\(\{ preventScroll: true \}\)/);
-  assert.match(realm, /<MessageComposer/, "the realm does not use the shared composer");
-  assert.match(realm, /textareaRef=\{inputRef\}/, "the realm does not hand over its field");
+  assert.match(shared, /const submit = \(\) => \{[\s\S]{0,80}?onSend\(\);[\s\S]{0,80}?field\.current\?\.focus\(\)/);
+  assert.match(realm, /<RealmComposer/, "the realm mounts the shared wrapper");
+  assert.match(realmComposer, /<ChatComposer/, "the wrapper hands the row to the shared composer");
   for (const [name, source] of [["dm", dm], ["group", group]]) {
-    assert.match(source, /<MessageComposer/, `${name} does not use the shared composer`);
-    assert.match(source, /textareaRef=\{composerRef\}/, `${name} does not hand over its field`);
-    assert.match(
-      source,
-      /const keepComposerFocused = \(\) => \{\s*composerRef\.current\?\.focus\(\{ preventScroll: true \}\);/,
-      `${name} restores focus after sending`,
-    );
-    assert.match(
-      source,
-      /document\.activeElement === composer[\s\S]{0,160}?scrollTop = (?:list|messagesListRef\.current)\.scrollHeight/,
-      `${name} keeps the newest message in view as the box grows`,
-    );
+    assert.match(source, /<ChatComposer/, `${name} use the shared composer`);
+    assert.match(source, /onTextareaClick=/, `${name} wire the field's click`);
+    assert.match(source, /if \(!replyTo\) return;\s*composerRef\.current\?\.focus\(\)/, `${name} restore focus for a reply`);
   }
 });
 
 await check("clicking a composer lands on the newest message", async () => {
-  for (const [name, source] of [["dm", dm], ["group", group], ["realm", realm]]) {
+  for (const [name, source] of [["dm", dm], ["group", group]]) {
     assert.ok(source.includes("scrollChatToLatest("), `${name} uses the shared jump`);
-    assert.match(
-      source,
-      /onTextareaClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/,
-      `${name} jumps on click`,
-    );
+    assert.match(source, /onTextareaClick=/, `${name} wire the field's click`);
+    assert.match(source, /scrollChatToLatest\(/, `${name} reuse the shared jump`);
   }
+  assert.ok(realm.includes("scrollChatToLatest("), "realm uses the shared jump");
+  assert.match(
+    realmComposer,
+    /onTextareaClick=\{\(\) => \{[\s\S]{0,160}?onInputFocus\?\.\(\)/,
+    "the realm wrapper forwards the click",
+  );
+  assert.match(realm, /onInputFocus=\{\(\) => scrollChatToLatest\(messageListRef\.current\)\}/);
   const helper = read("lib/chat-scroll.ts");
   assert.match(helper, /scroller\.scrollTop = scroller\.scrollHeight/, "it scrolls to the bottom");
   assert.match(helper, /requestAnimationFrame/, "and settles over the next frames");

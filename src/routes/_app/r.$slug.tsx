@@ -102,7 +102,8 @@ import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
 import { compressChatImage } from "@/lib/chat-media";
 import { RealmComposer, type RealmComposerHandle } from "@/components/chat/RealmComposer";
-import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
+import { asChatFileCard, type ChatFileDraft } from "@/lib/chat-files";
+import { chatUploadLimitBytes } from "@/lib/purify";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { SwipeableMessage } from "@/components/chat/SwipeToReply";
 import { ReplyQuote } from "@/components/chat/ReplyQuote";
@@ -126,6 +127,7 @@ import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { GifContent } from "@/components/GifContent";
 import { MarkdownText } from "@/components/MarkdownText";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
+import { ChatFileCardView } from "@/components/chat/ChatFileCard";
 import { nameColorFor } from "@/lib/chat-appearance";
 import { isMediaPlaceholderText, renderGifSegments } from "@/lib/gif-content";
 import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
@@ -494,9 +496,14 @@ function RealmPage() {
     const seen = new Set<string>();
     const out: { id: string; url: string }[] = [];
     for (let i = messageRows.length - 1; i >= 0 && out.length < 12; i -= 1) {
-      const message = messageRows[i] as { id?: string; attachment_url?: string | null };
+      const message = messageRows[i] as {
+        id?: string;
+        attachment_url?: string | null;
+        card?: unknown;
+      };
       const url = message.attachment_url;
       if (!url || seen.has(url) || String(message.id ?? "").startsWith("pending-")) continue;
+      if (asChatFileCard(message.card)) continue;
       seen.add(url);
       out.push({ id: String(message.id ?? url), url });
     }
@@ -796,7 +803,7 @@ function RealmPage() {
     files,
   }: {
     text: string;
-    files: File[];
+    files: ChatFileDraft[];
   }): Promise<boolean> => {
     if (!user || (!text.trim() && !files.length)) return false;
     if (!joined) {
@@ -894,56 +901,34 @@ function RealmPage() {
 
     setSending(true);
     try {
-      const uploadLimit = chatUploadLimitBytes(myProfile);
-      const urls: string[] = [];
-      for (const file of files) {
-        if (file.size > uploadLimit) {
-          toast.error(`Files must be smaller than ${formatUploadLimit(uploadLimit)}.`);
-          continue;
-        }
-        if (file.type.startsWith("video/")) {
-          const extension =
-            (file.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp4";
-          const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
-          const { error: uploadError } = await supabase.storage
-            .from("chat-media")
-            .upload(path, file, { contentType: file.type || "video/mp4" });
-          if (uploadError) {
-            throw new Error(
-              /bucket|not found|does not exist|schema cache/i.test(uploadError.message)
-                ? "Media sending needs the chat-media storage setup in BACKEND_REQUIREMENTS.md."
-                : uploadError.message,
-            );
-          }
-          urls.push(supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl);
-          continue;
-        }
-        const blob = await compressChatImage(file);
-        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from("chat-media")
-          .upload(path, blob, { contentType: "image/jpeg" });
-        if (uploadError) {
-          throw new Error(
-            /bucket|not found|does not exist|schema cache/i.test(uploadError.message)
-              ? "Photo sending needs the chat-media storage setup in BACKEND_REQUIREMENTS.md."
-              : uploadError.message,
-          );
-        }
-        urls.push(supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl);
+      const ready = files.filter((file) => file.status === "ready" && file.url);
+      if (files.length && !ready.length) {
+        toast.error("Those files didn't finish uploading. Try again.");
+        return false;
       }
 
       // A message row carries one attachment, so extra files follow as their own
       // rows — a photo album, with the caption on the first one.
-      const [first, ...rest] = urls;
+      const [first, ...rest] = ready;
       if (!text.trim() && !first) return false;
       if (activeRoomId && activeRoom?.kind !== "voice") {
-        await sendRealmRoomMessage(activeRoomId, user.id, text.trim(), first ?? null, replyId);
-        for (const url of rest) await sendRealmRoomMessage(activeRoomId, user.id, "", url);
+        await sendRealmRoomMessage(
+          activeRoomId,
+          user.id,
+          text.trim(),
+          first?.url ?? null,
+          replyId,
+          first?.card ?? null,
+        );
+        for (const file of rest) {
+          await sendRealmRoomMessage(activeRoomId, user.id, "", file.url, null, file.card ?? null);
+        }
         await qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
       } else {
-        await sendRealmMessage(c.id, user.id, text.trim(), first ?? null, replyId);
-        for (const url of rest) await sendRealmMessage(c.id, user.id, "", url);
+        await sendRealmMessage(c.id, user.id, text.trim(), first?.url ?? null, replyId, first?.card ?? null);
+        for (const file of rest) {
+          await sendRealmMessage(c.id, user.id, "", file.url, null, file.card ?? null);
+        }
       }
       setReplyTo(null);
       return true;
@@ -2244,13 +2229,22 @@ function RealmPage() {
                         </div>
                       )}
                       {/* Media renders as its own block — never inside a bubble. */}
-                      {m.attachment_url && !String(m.id).startsWith("pending-") && (
-                        <ChatMessageMedia
-                          src={m.attachment_url}
-                          alt="Image shared in chat"
-                          className="my-1"
-                        />
-                      )}
+                      {(() => {
+                        const fileCard = asChatFileCard((m as { card?: unknown }).card);
+                        if (fileCard) {
+                          return <ChatFileCardView file={fileCard} className="my-1" />;
+                        }
+                        if (m.attachment_url && !String(m.id).startsWith("pending-")) {
+                          return (
+                            <ChatMessageMedia
+                              src={m.attachment_url}
+                              alt="Image shared in chat"
+                              className="my-1"
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
                       <MessageActionMenu
                         open={openMessageId === m.id}
                         onOpenChange={(open) => {
@@ -2789,6 +2783,9 @@ function RealmPage() {
           realmId={c.id}
           realmName={c.name}
           photos={recentPhotos}
+          avatarUrl={myProfile?.avatar_url ?? null}
+          scrollRef={messageListRef}
+          uploadLimit={chatUploadLimitBytes(myProfile)}
           channelKey={sendChannelKey}
           userId={user?.id ?? null}
           joined={joined}

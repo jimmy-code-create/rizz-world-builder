@@ -21,12 +21,9 @@ import {
   MoreVertical,
   ArrowDown,
   Search,
-  Clock,
   X,
   Trash2,
   ImagePlus,
-  Camera,
-  Folder,
   Users,
   Copy,
   Flag,
@@ -39,11 +36,9 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
-import { MessageComposer } from "@/components/chat/MessageComposer";
+import { ChatComposer, type PendingComposerFile } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
-import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
 import { ChatPollCard } from "@/components/chat/PollCard";
 import { asChatPollCard } from "@/lib/chat-polls";
 import { CornerUpLeft } from "lucide-react";
@@ -87,7 +82,14 @@ import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { startRecording, uploadVoiceNote } from "@/lib/voice-notes";
 import { blockUser, isBlocked, muteUser, unblockUser, unmuteUser } from "@/lib/social";
-import { compressChatImage } from "@/lib/chat-media";
+import { ChatFileCardView } from "@/components/chat/ChatFileCard";
+import {
+  asChatFileCard,
+  makeChatFileDraft,
+  releaseChatFileDraft,
+  uploadChatFileDraft,
+  type ChatFileDraft,
+} from "@/lib/chat-files";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { ReplyQuote } from "@/components/chat/ReplyQuote";
@@ -96,7 +98,6 @@ import { SharedPostCards } from "@/components/chat/SharedPostCards";
 import { withoutShareLinks } from "@/lib/share-links";
 import { extractInviteCode } from "@/lib/groups";
 import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard";
-import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { WallpaperSheet } from "@/components/chat/WallpaperSheet";
 import { loadWallpaper, wallpaperStyle, type ChatWallpaper } from "@/lib/chat-wallpaper";
@@ -165,8 +166,6 @@ function DMPage() {
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [sendingCount, setSendingCount] = useState(0);
   const sendingMessage = sendingCount > 0;
-  const [gifOpen, setGifOpen] = useState(false);
-  const [catOpen, setCatOpen] = useState(false);
   // The field is a contenteditable div (ComposerInput), so a custom emoji draws
   // as a picture inline instead of pasting its `<:name:id>` token as text.
   const composerRef = useRef<ComposerInputHandle>(null);
@@ -252,12 +251,8 @@ function DMPage() {
   const [confirmBlockOpen, setConfirmBlockOpen] = useState(false);
   // Forward opens the same "send to" picker posts, reels and realms use.
   const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const filesInputRef = useRef<HTMLInputElement>(null);
-  const pendingMediaRef = useRef(new Map<string, File>());
+  const [pendingFiles, setPendingFiles] = useState<ChatFileDraft[]>([]);
+  const pendingMediaRef = useRef(new Map<string, ChatFileDraft>());
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
@@ -754,7 +749,7 @@ function DMPage() {
     pendingId: string,
     text: string,
     clearComposerText?: string,
-    pendingPreview?: string | null,
+    fallback?: { url: string | null; card: unknown },
   ) => {
     if (!user) return;
     setSendingCount((count) => count + 1);
@@ -763,34 +758,16 @@ function DMPage() {
         message.id === pendingId ? { ...message, delivery_status: "sending" } : message,
       ),
     );
-    let uploadedImagePath: string | null = null;
     try {
-      let attachmentUrl: string | null = null;
-      const pendingImage = pendingMediaRef.current.get(pendingId);
-      if (pendingImage) {
-        const compressed = await compressChatImage(pendingImage);
-        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-        uploadedImagePath = path;
-        const { error: uploadError } = await supabase.storage
-          .from("chat-media")
-          .upload(path, compressed, { contentType: "image/jpeg", upsert: false });
-        if (uploadError) {
-          if (/bucket.*not found|not found.*bucket/i.test(uploadError.message)) {
-            throw new Error(
-              "Image sending is not enabled yet. Apply the chat-media setup in BACKEND_REQUIREMENTS.md.",
-            );
-          }
-          throw uploadError;
-        }
-        attachmentUrl = supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
-      }
+      const draft = pendingMediaRef.current.get(pendingId);
       const { data, error } = await supabase
         .from("direct_messages")
         .insert({
           sender_id: user.id,
           recipient_id: userId,
           body: text,
-          attachment_url: attachmentUrl,
+          attachment_url: draft?.url ?? fallback?.url ?? null,
+          card: (draft?.card ?? fallback?.card ?? null) as unknown as CachedDirectMessage["card"],
           reply_to: pendingReplyRef.current.get(pendingId) ?? null,
         })
         .select("*")
@@ -804,23 +781,13 @@ function DMPage() {
       setReplyTo(null);
       pendingMediaRef.current.delete(pendingId);
       pendingReplyRef.current.delete(pendingId);
-      if (pendingImage && imageFile === pendingImage) {
-        setImageFile(null);
-        setImagePreview((current) => (current === pendingPreview ? null : current));
-      }
+      if (draft) releaseChatFileDraft(draft);
       if (clearComposerText !== undefined) {
         setBody((current) => (current === clearComposerText ? "" : current));
       }
     } catch (error) {
-      if (uploadedImagePath) {
-        try {
-          await supabase.storage.from("chat-media").remove([uploadedImagePath]);
-        } catch {
-          // Upload cleanup is best-effort; keep the failed message retryable.
-        }
-      }
-      // The composer was cleared optimistically. If it is still empty, put the
-      // text back so a failed send never eats what the person typed.
+      // The optimistic row stays and can be retried; its uploaded file is
+      // already referenced by that row, so there is nothing to clean up.
       if (clearComposerText) {
         setBody((current) => (current ? current : clearComposerText));
       }
@@ -885,10 +852,18 @@ function DMPage() {
       return;
     }
 
-    if (!body.trim() && !imageFile) return;
+    if (!body.trim() && !pendingFiles.length) return;
+    if (pendingFiles.some((file) => file.status === "uploading")) {
+      toast.info("One moment — the upload is still finishing");
+      return;
+    }
+    const attachments = pendingFiles.filter((file) => file.status === "ready" && file.url);
+    if (pendingFiles.length && !attachments.length) {
+      toast.error("Remove the failed file and try again.");
+      return;
+    }
     const composerText = body;
     const reply = replyTo;
-    const pendingPreview = imagePreview;
     // The quote is a reply_to pointer, not text pasted into the body.
     const text = body.trim();
     if (text.length > MAX_MESSAGE_LENGTH) {
@@ -896,42 +871,53 @@ function DMPage() {
       return;
     }
     hapticSend();
-    const pendingId = `pending-${crypto.randomUUID()}`;
-    if (reply) pendingReplyRef.current.set(pendingId, reply.id);
-    const optimistic: CachedDirectMessage = {
-      id: pendingId,
-      sender_id: user.id,
-      recipient_id: userId,
-      body: text,
-      created_at: new Date().toISOString(),
-      read: false,
-      audio_url: null,
-      duration_ms: null,
-      reply_to: reply?.id ?? null,
-      story_id: null,
-      deleted_at: null,
-      delivery_status: "sending",
-      attachment_url: pendingPreview,
-      // No rich card on an optimistic row; the server row replaces it.
-      card: null,
-    };
-    if (imageFile) pendingMediaRef.current.set(pendingId, imageFile);
+    const groups: Array<{ draft: ChatFileDraft | null; body: string; replyId: string | null }> =
+      attachments.length
+        ? attachments.map((draft, index) => ({
+            draft,
+            body: index === 0 ? text : "",
+            replyId: index === 0 ? (reply?.id ?? null) : null,
+          }))
+        : [{ draft: null, body: text, replyId: reply?.id ?? null }];
+    const optimistic: CachedDirectMessage[] = groups.map(({ draft, body: rowBody, replyId }) => {
+      const pendingId = `pending-${crypto.randomUUID()}`;
+      if (replyId) pendingReplyRef.current.set(pendingId, replyId);
+      if (draft) pendingMediaRef.current.set(pendingId, draft);
+      return {
+        id: pendingId,
+        sender_id: user.id,
+        recipient_id: userId,
+        body: rowBody,
+        created_at: new Date().toISOString(),
+        read: false,
+        audio_url: null,
+        duration_ms: null,
+        reply_to: replyId,
+        story_id: null,
+        deleted_at: null,
+        delivery_status: "sending",
+        attachment_url: draft?.url ?? null,
+        card: (draft?.card ?? null) as CachedDirectMessage["card"],
+      };
+    });
     qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [
       ...current,
-      optimistic,
+      ...optimistic,
     ]);
 
-    // Clear the box immediately; the optimistic row is already on screen. The
-    // network insert and image upload continue in the background, so a slow
-    // connection never makes the composer feel stuck.
+    // Clear the box immediately; the optimistic rows are already on screen and
+    // every file was uploaded as soon as it was picked.
     setBody("");
     setCaret(0);
     setReplyTo(null);
-    if (imageFile) {
-      setImageFile(null);
-      setImagePreview(null);
-    }
-    void deliverPendingMessage(pendingId, text, composerText, pendingPreview);
+    setPendingFiles([]);
+    optimistic.forEach((row, index) => {
+      void deliverPendingMessage(
+        row.id,
+        row.body,
+        index === 0 ? composerText : undefined,
+      );
+    });
   };
 
   const beginVoiceNote = async () => {
@@ -980,23 +966,71 @@ function DMPage() {
     }
   };
 
-  const chooseImage = (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Choose an image file.");
-      return;
-    }
-    const uploadLimit = chatUploadLimitBytes(profile);
-    if (file.size > uploadLimit) {
-      toast.error(
-        `Images must be smaller than ${formatUploadLimit(uploadLimit)} before compression.`,
+  const uploadDraft = async (draft: ChatFileDraft) => {
+    if (!user) return;
+    try {
+      const result = await uploadChatFileDraft(draft, user.id, (progress) =>
+        setPendingFiles((current) =>
+          current.map((file) => (file.id === draft.id ? { ...file, progress } : file)),
+        ),
       );
+      setPendingFiles((current) =>
+        current.map((file) =>
+          file.id === draft.id ? { ...file, ...result, progress: 100, status: "ready" } : file,
+        ),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Couldn't upload that file.";
+      setPendingFiles((current) =>
+        current.map((file) =>
+          file.id === draft.id ? { ...file, status: "error", error: message } : file,
+        ),
+      );
+      toast.error(message);
+    }
+  };
+
+  const addFiles = (files: File[]) => {
+    if (!files.length) return;
+    const uploadLimit = chatUploadLimitBytes(profile);
+    const accepted: ChatFileDraft[] = [];
+    for (const file of files) {
+      if (file.size > uploadLimit) {
+        toast.error(`${file.name || "That file"} is larger than ${formatUploadLimit(uploadLimit)}.`);
+        continue;
+      }
+      const draft = makeChatFileDraft(file);
+      if (draft.preview) imageObjectUrlsRef.current.add(draft.preview);
+      accepted.push(draft);
+    }
+    if (!accepted.length) return;
+    const room = Math.max(0, 10 - pendingFiles.length);
+    if (!room) {
+      toast.error("You can attach up to 10 files at once.");
+      accepted.forEach(releaseChatFileDraft);
       return;
     }
-    const preview = URL.createObjectURL(file);
-    imageObjectUrlsRef.current.add(preview);
-    setImageFile(file);
-    setImagePreview(preview);
+    const batch = accepted.slice(0, room);
+    if (batch.length < accepted.length) {
+      toast.error("You can attach up to 10 files at once.");
+      accepted.slice(room).forEach(releaseChatFileDraft);
+    }
+    setPendingFiles((current) => [...current, ...batch].slice(0, 10));
+    batch.forEach((draft) => void uploadDraft(draft));
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles((current) => {
+      const target = current[index];
+      if (target) {
+        releaseChatFileDraft(target);
+        imageObjectUrlsRef.current.delete(target.preview ?? "");
+        if (target.path) {
+          void supabase.storage.from("chat-media").remove([target.path]).catch(() => {});
+        }
+      }
+      return current.filter((_, i) => i !== index);
+    });
   };
 
   const scheduleSend = () => {
@@ -1269,9 +1303,14 @@ function DMPage() {
     const seen = new Set<string>();
     const out: { id: string; url: string }[] = [];
     for (let i = filteredMsgs.length - 1; i >= 0 && out.length < 12; i -= 1) {
-      const message = filteredMsgs[i] as { id?: string; attachment_url?: string | null };
+      const message = filteredMsgs[i] as {
+        id?: string;
+        attachment_url?: string | null;
+        card?: unknown;
+      };
       const url = message.attachment_url;
       if (!url || seen.has(url) || String(message.id ?? "").startsWith("pending-")) continue;
+      if (asChatFileCard(message.card)) continue;
       seen.add(url);
       out.push({ id: String(message.id ?? url), url });
     }
@@ -1287,7 +1326,7 @@ function DMPage() {
       const blob = await response.blob();
       if (!blob.type.startsWith("image/")) throw new Error("not an image");
       const extension = (blob.type.split("/")[1] ?? "jpg").split("+")[0];
-      chooseImage(new File([blob], `photo.${extension}`, { type: blob.type }));
+      addFiles([new File([blob], `photo.${extension}`, { type: blob.type })]);
     } catch {
       toast.error("Couldn't open that photo.");
     }
@@ -2081,6 +2120,7 @@ function DMPage() {
                   );
                 }
                 const deletedAt = (m as CachedDirectMessage).deleted_at;
+                const fileCard = asChatFileCard((m as { card?: unknown }).card);
                 return (
                   <div key={m.id} className="chat-message-slot space-y-1">
                     {newDay && <DateSeparator date={m.created_at} />}
@@ -2301,13 +2341,18 @@ function DMPage() {
                                 <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
                               </span>
                             )}
-                            {m.attachment_url && !deletedAt && (
+                            {fileCard && !deletedAt ? (
+                              <ChatFileCardView
+                                file={fileCard}
+                                className={hasText ? "mb-1" : ""}
+                              />
+                            ) : m.attachment_url && !deletedAt ? (
                               <ChatMessageMedia
                                 src={m.attachment_url}
                                 alt="Image shared in chat"
                                 className={hasText ? "mb-1" : ""}
                               />
-                            )}
+                            ) : null}
                             {deletedAt ? (
                               <span className="text-[13px] italic text-muted-foreground">
                                 This message was unsent
@@ -2315,7 +2360,9 @@ function DMPage() {
                             ) : !hasText ? null : (
                               <div
                                 className={
-                                  m.attachment_url || mediaOnly ? "chat-media-caption" : ""
+                                  m.attachment_url || fileCard || mediaOnly
+                                    ? "chat-media-caption"
+                                    : ""
                                 }
                               >
                                 {renderGifSegments(messageText).map((seg, si) =>
@@ -2384,7 +2431,10 @@ function DMPage() {
                       {deliveryStatus === "failed" ? (
                         <button
                           onClick={() =>
-                            void deliverPendingMessage(m.id, m.body, undefined, m.attachment_url)
+                            void deliverPendingMessage(m.id, m.body, undefined, {
+                              url: m.attachment_url,
+                              card: (m as { card?: unknown }).card ?? null,
+                            })
                           }
                           disabled={sendingMessage}
                           className="text-[10px] text-amber-200/80 hover:text-amber-100"
@@ -2453,41 +2503,7 @@ function DMPage() {
           </button>
         )}
 
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(event) => {
-            chooseImage(event.target.files?.[0] ?? null);
-            event.currentTarget.value = "";
-          }}
-        />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          hidden
-          onChange={(event) => {
-            chooseImage(event.target.files?.[0] ?? null);
-            event.currentTarget.value = "";
-          }}
-        />
-        {/* The same picker reached through the device's file browser: on a
-            phone the photo library and the Files app are different places. */}
-        <input
-          ref={filesInputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(event) => {
-            chooseImage(event.target.files?.[0] ?? null);
-            event.currentTarget.value = "";
-          }}
-        />
-
-        <MessageComposer
+        <ChatComposer
           value={body}
           onChange={(next, nextCaret) => {
             setBody(next);
@@ -2495,8 +2511,50 @@ function DMPage() {
             broadcastTyping();
           }}
           onSend={send}
-          onEmoji={() => setGifOpen(true)}
-          onStickers={() => setCatOpen(true)}
+          onPickEmoji={(token) => {
+            const el = composerRef.current;
+            if (!el) return;
+            el.insertEmoji(token);
+            const next = el.getValue();
+            setBody(next);
+            setCaret(el.getCaret());
+          }}
+          onSendMarker={(marker) => {
+            if (!user) return;
+            hapticSend();
+            const pendingId = `pending-${crypto.randomUUID()}`;
+            if (replyTo) pendingReplyRef.current.set(pendingId, replyTo.id);
+            const optimistic: CachedDirectMessage = {
+              id: pendingId,
+              sender_id: user.id,
+              recipient_id: userId,
+              body: marker,
+              created_at: new Date().toISOString(),
+              read: false,
+              audio_url: null,
+              duration_ms: null,
+              reply_to: replyTo?.id ?? null,
+              story_id: null,
+              deleted_at: null,
+              delivery_status: "sending",
+              attachment_url: null,
+              card: null,
+            };
+            qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [
+              ...current,
+              optimistic,
+            ]);
+            void deliverPendingMessage(pendingId, marker);
+          }}
+          onFilesSelected={addFiles}
+          pendingFiles={pendingFiles as PendingComposerFile[]}
+          onRemovePendingFile={removePendingFile}
+          avatarUrl={profile?.avatar_url ?? null}
+          scrollRef={scrollRef}
+          recentPhotos={recentPhotos}
+          onPickRecentPhoto={(url) => void pickRecentPhoto(url)}
+          onSchedule={scheduleSend}
+          scheduleDisabled={!body.trim()}
           placeholder={other.data?.username ? `Message ${other.data.username}` : "Message"}
           maxLength={MAX_MESSAGE_LENGTH}
           inputRef={composerRef}
@@ -2504,7 +2562,7 @@ function DMPage() {
           disabled={Boolean(blockStatus.data)}
           disabledHint="You can't message this person"
           sending={sendingVoice}
-          canSend={Boolean(body.trim() || imageFile)}
+          canSend={Boolean(body.trim() || pendingFiles.length)}
           recording={recording}
           recordMs={recMs}
           onRecordStart={() => void beginVoiceNote()}
@@ -2516,72 +2574,7 @@ function DMPage() {
             scrollChatToLatest(scrollRef.current);
           }}
           onFocus={() => scrollChatToLatest(scrollRef.current)}
-          attach={
-            <ChatAttachButton
-              appearance="circle"
-              label="Attach"
-              disabled={Boolean(blockStatus.data)}
-              actions={[
-                {
-                  id: "photo",
-                  label: "Photos",
-                  hint: "Your library",
-                  icon: ImagePlus,
-                  onSelect: () => imageInputRef.current?.click(),
-                },
-                {
-                  id: "camera",
-                  label: "Camera",
-                  hint: "Take a shot",
-                  icon: Camera,
-                  onSelect: () => cameraInputRef.current?.click(),
-                },
-                {
-                  id: "files",
-                  label: "Files",
-                  hint: "Browse device",
-                  icon: Folder,
-                  onSelect: () => filesInputRef.current?.click(),
-                },
-                {
-                  id: "schedule",
-                  label: "Schedule",
-                  hint: "Send in 10 seconds",
-                  icon: Clock,
-                  onSelect: scheduleSend,
-                  disabled: !body.trim(),
-                },
-              ]}
-              photos={recentPhotos}
-              onPickPhoto={(url) => void pickRecentPhoto(url)}
-            />
-          }
-          above={
-            imagePreview ? (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-                <img
-                  src={imagePreview}
-                  alt="Image ready to send"
-                  className="h-14 w-14 rounded-lg object-cover"
-                />
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                  Ready to send
-                </span>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remove image"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : null
-          }
+          onPasteFiles={addFiles}
           reply={
             editing
               ? {
@@ -2621,24 +2614,6 @@ function DMPage() {
                   });
               }}
             />
-          }
-        />
-
-        <GifPicker
-          open={gifOpen}
-          onOpenChange={setGifOpen}
-          hideTrigger
-          onSelect={(marker) =>
-            setBody((current) =>
-              `${current}${current ? " " : ""}${marker}`.slice(0, MAX_MESSAGE_LENGTH),
-            )
-          }
-        />
-        <CatStickerSheet
-          open={catOpen}
-          onOpenChange={setCatOpen}
-          onPick={(shortcode) =>
-            setBody((current) => `${current}${shortcode}`.slice(0, MAX_MESSAGE_LENGTH))
           }
         />
 

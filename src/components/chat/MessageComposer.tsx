@@ -1,48 +1,143 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { ArrowUp, Cat, Mic, Smile, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { ArrowUp, ImagePlus, Mic, Plus, Smile, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ComposerInput, type ComposerInputHandle } from "@/components/chat/ComposerInput";
 import type { EmojiTokenParts } from "@/lib/emoji-token";
+import {
+  ChatDockPanel,
+  readLastChatPickerTab,
+  writeLastChatPickerTab,
+  type ChatPickerTab,
+  type ChatPanelMode,
+} from "@/components/chat/ChatDockPanel";
 
 /**
- * The chat composer, in one row.
+ * The one chat composer used by DMs, groups and realm channels.
  *
- * DM and group chat share this component so the two can never drift: a 40px
- * attach disc, a 40px-tall pill holding the emoji trigger, the textarea and
- * the cat trigger, and a 40px lime action disc that is a mic when the box is
- * empty and an arrow when there is something to send. The row owns its own
- * solid bar so screens never stack a second `chat-bar` behind it.
- *
- * Everything the composer needs to know about the world arrives as props, which
- * is why the pickers, the attach sheet and the mention popup stay owned by the
- * screen: the composer only draws the row and owns the input's own state
- * (height, focus ring, the mic slide).
+ * The row is a plus, the input pill, the member's avatar and the voice/send
+ * action. Emoji, GIFs, stickers and attachments open in a panel docked under
+ * the row, in the same space the keyboard occupied — the transcript above
+ * stays visible and scrollable instead of being covered by a dimmed sheet.
  */
 export type ComposerReply = {
   mode?: "reply" | "edit";
-  /** "Replying to Mina" / "Editing message". */
   label: string;
-  /** One line of the thing being replied to or edited. */
   preview: string;
   onCancel: () => void;
   onJump?: () => void;
 };
 
-/** Five text lines, then the textarea scrolls instead of growing. */
 const MAX_INPUT_HEIGHT = 112;
 const SLIDE_CANCEL_PX = 70;
+const KEYBOARD_HEIGHT_KEY = "rizz:keyboard-height:v1";
 
 function vibrate(ms: number) {
   if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
   navigator.vibrate(ms);
 }
 
-export function MessageComposer({
+function clampPanelHeight(value: number) {
+  const viewport = window.visualViewport?.height ?? window.innerHeight;
+  return Math.round(Math.min(viewport * 0.6, Math.max(280, value || viewport * 0.4)));
+}
+
+function readStoredKeyboardHeight() {
+  try {
+    const value = Number(localStorage.getItem(KEYBOARD_HEIGHT_KEY));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export type PendingComposerFile = {
+  id?: string;
+  name: string;
+  size: number;
+  preview?: string | null;
+  /** 0–100 while uploading; omitted or 100 when ready. */
+  progress?: number;
+  status?: "uploading" | "ready" | "error";
+  error?: string;
+};
+
+export type ChatComposerProps = {
+  value: string;
+  onChange: (next: string, caret: number) => void;
+  onSend: () => void;
+  /** Insert a unicode or realm emoji token at the caret. */
+  onPickEmoji: (token: string) => void;
+  /** A GIF or sticker was tapped: send it immediately. */
+  onSendMarker: (marker: string) => void;
+  onFilesSelected?: (files: File[]) => void;
+  pendingFiles?: PendingComposerFile[];
+  onRemovePendingFile?: (index: number) => void;
+  avatarUrl?: string | null;
+  scrollRef?: RefObject<HTMLDivElement | null>;
+  recentPhotos?: { id: string; url: string }[];
+  onPickRecentPhoto?: (url: string) => void;
+  onManageEmoji?: () => void;
+  onSchedule?: () => void;
+  onPoll?: () => void;
+  scheduleDisabled?: boolean;
+  /** Legacy escape hatch; new callers let the composer draw its own plus. */
+  attach?: ReactNode;
+  above?: ReactNode;
+  mentions?: ReactNode;
+  overlay?: ReactNode;
+  reply?: ComposerReply | null;
+  disabled?: boolean;
+  disabledHint?: string;
+  placeholder?: string;
+  maxLength?: number;
+  inputRef?: RefObject<ComposerInputHandle | null>;
+  resolveEmoji?: (parts: EmojiTokenParts) => string | null;
+  sending?: boolean;
+  recording?: boolean;
+  recordMs?: number;
+  onRecordStart?: () => void;
+  onRecordEnd?: () => void;
+  onRecordCancel?: () => void;
+  canRecord?: boolean;
+  canSend?: boolean;
+  allowVoice?: boolean;
+  onKeyUp?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  onTextareaClick?: () => void;
+  onPaste?: (event: React.ClipboardEvent<Element>) => void;
+  onPasteFiles?: (files: File[]) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  /** Kept for callers that still wire the old separate triggers. */
+  onEmoji?: () => void;
+  onStickers?: () => void;
+};
+
+export function ChatComposer({
   value,
   onChange,
   onSend,
-  onEmoji,
-  onStickers,
+  onPickEmoji,
+  onSendMarker,
+  onFilesSelected,
+  pendingFiles = [],
+  onRemovePendingFile,
+  avatarUrl,
+  scrollRef,
+  recentPhotos = [],
+  onPickRecentPhoto,
+  onManageEmoji,
+  onSchedule,
+  onPoll,
+  scheduleDisabled,
   attach,
   above,
   mentions,
@@ -61,9 +156,7 @@ export function MessageComposer({
   onRecordEnd,
   onRecordCancel,
   canRecord = true,
-  /** Whether there is something to send (text *or* an attachment). */
   canSend,
-  /** Groups have no voice notes yet: the action stays a send arrow. */
   allowVoice = true,
   onKeyUp,
   onKeyDown,
@@ -72,71 +165,203 @@ export function MessageComposer({
   onPasteFiles,
   onFocus,
   onBlur,
-}: {
-  value: string;
-  /** The caret is passed along, because the mention popup keys off it. */
-  onChange: (next: string, caret: number) => void;
-  onSend: () => void;
-  onEmoji: () => void;
-  onStickers: () => void;
-  /** The screen's own ChatAttachButton, already styled as a 44px circle. */
-  attach: ReactNode;
-  /** A photo preview, an upload progress strip: anything above the row. */
-  above?: ReactNode;
-  /** The mention popup, rendered inside the pill's positioning context. */
-  mentions?: ReactNode;
-  /** Anything else that anchors above the field, e.g. the realm slash menu. */
-  overlay?: ReactNode;
-  reply?: ComposerReply | null;
-  disabled?: boolean;
-  /** Why the composer is closed: shown in place of the placeholder. */
-  disabledHint?: string;
-  placeholder?: string;
-  maxLength?: number;
-  /**
-   * The field itself. It is a contenteditable div (see ComposerInput) so a
-   * custom emoji can be drawn inline instead of pasting its token as text.
-   */
-  inputRef?: RefObject<ComposerInputHandle | null>;
-  /**
-   * Draws an emoji `data-token` as a picture. The screen owns this because it
-   * may know about a just-uploaded emoji the shared list has not seen yet.
-   */
-  resolveEmoji?: (parts: EmojiTokenParts) => string | null;
-  sending?: boolean;
-  recording?: boolean;
-  recordMs?: number;
-  onRecordStart?: () => void;
-  /** Released without sliding: send the clip. */
-  onRecordEnd?: () => void;
-  /** Slid past the cancel threshold: throw the clip away. */
-  onRecordCancel?: () => void;
-  canRecord?: boolean;
-  canSend?: boolean;
-  allowVoice?: boolean;
-  onKeyUp?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
-  /** Runs before the composer's own Enter-to-send, for slash menus and the like. */
-  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
-  onTextareaClick?: () => void;
-  /** Image paste, kept exactly as it was (the screen uploads the file). */
-  onPaste?: (event: React.ClipboardEvent<Element>) => void;
-  onPasteFiles?: (files: File[]) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
-}) {
+  onEmoji,
+  onStickers,
+}: ChatComposerProps) {
   const localRef = useRef<ComposerInputHandle | null>(null);
   const field = inputRef ?? localRef;
   const hadReply = useRef(false);
   const pressRef = useRef<{ x: number } | null>(null);
   const [sliding, setSliding] = useState(false);
   const hasText = value.trim().length > 0;
-  // A photo with no caption is still sendable, so the screen decides whether
-  // the action is a send arrow; text alone is the default.
   const canSendNow = canSend ?? hasText;
 
-  // Auto-grow to five lines, then scroll. `height:auto` first is what lets the
-  // box shrink again after a deletion. The contenteditable measures the same
-  // way a textarea did.
+  const [panel, setPanel] = useState<ChatPanelMode | null>(null);
+  const [renderedPanel, setRenderedPanel] = useState<ChatPanelMode | null>(null);
+  const [pickerTab, setPickerTab] = useState<ChatPickerTab>(() => readLastChatPickerTab());
+  const [panelHeight, setPanelHeight] = useState(0);
+  const closeHistoryRef = useRef(false);
+  const photosRef = useRef<HTMLInputElement | null>(null);
+  const cameraRef = useRef<HTMLInputElement | null>(null);
+  const filesRef = useRef<HTMLInputElement | null>(null);
+  const wasNearBottomRef = useRef(true);
+
+  // Track the keyboard by its height change. With interactive-widget=
+  // resizes-content the layout viewport also shrinks, so the delta between two
+  // visualViewport heights is the reliable number on Android Chrome.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    let last = viewport.height;
+    let lastWidth = viewport.width;
+    const onResize = () => {
+      const next = viewport.height;
+      const nextWidth = viewport.width;
+      const delta = last - next;
+      // A rotation also changes the viewport height; only a height change at a
+      // stable width is the keyboard.
+      if (Math.abs(nextWidth - lastWidth) < 2 && delta > 120) {
+        try {
+          localStorage.setItem(KEYBOARD_HEIGHT_KEY, String(Math.round(delta)));
+        } catch {
+          // Storage is best effort.
+        }
+      }
+      last = next;
+      lastWidth = nextWidth;
+    };
+    viewport.addEventListener("resize", onResize);
+    return () => viewport.removeEventListener("resize", onResize);
+  }, []);
+
+  // Keep the panel's content mounted for the length of the close animation:
+  // collapsing an empty shell for 180ms looked like the panel vanished before
+  // its box finished shrinking.
+  useEffect(() => {
+    if (panel) {
+      setRenderedPanel(panel);
+      return;
+    }
+    const timer = window.setTimeout(() => setRenderedPanel(null), 180);
+    return () => window.clearTimeout(timer);
+  }, [panel]);
+
+  const pinBottom = useCallback(() => {
+    const element = scrollRef?.current;
+    if (!element || !wasNearBottomRef.current) return;
+    element.scrollTop = element.scrollHeight;
+  }, [scrollRef]);
+
+  const rememberBottom = useCallback(() => {
+    const element = scrollRef?.current;
+    if (!element) return;
+    wasNearBottomRef.current =
+      element.scrollTop + element.clientHeight >= element.scrollHeight - 120;
+  }, [scrollRef]);
+
+  useLayoutEffect(() => {
+    if (!panel) return;
+    const frame = requestAnimationFrame(() => pinBottom());
+    return () => cancelAnimationFrame(frame);
+  }, [panel, panelHeight, pinBottom]);
+
+  // The transcript's height animates while the dock opens, so one rAF is not
+  // enough to hold it at the bottom: the tallest scroll offset keeps growing
+  // for the whole 180ms. Observe the scroller and pin on every frame it resizes.
+  useEffect(() => {
+    if (!panel) return;
+    const element = scrollRef?.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (wasNearBottomRef.current) element.scrollTop = element.scrollHeight;
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [panel, scrollRef]);
+
+  // Rotation and browser chrome both change the viewport while the panel is
+  // open; keep its height inside the new bounds and hold the transcript at the
+  // bottom if that is where the reader was.
+  useEffect(() => {
+    if (!panel) return;
+    let frame = 0;
+    const onResize = () => {
+      setPanelHeight(clampPanelHeight(readStoredKeyboardHeight()));
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        pinBottom();
+      });
+    };
+    window.addEventListener("resize", onResize);
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+    };
+  }, [panel, pinBottom]);
+
+  const closePanel = useCallback(
+    (restoreFocus = false) => {
+      if (!panel) return;
+      rememberBottom();
+      setPanel(null);
+      requestAnimationFrame(() => pinBottom());
+      if (closeHistoryRef.current) {
+        closeHistoryRef.current = false;
+        try {
+          window.history.back();
+        } catch {
+          // No history entry; nothing to unwind.
+        }
+      }
+      if (restoreFocus) requestAnimationFrame(() => field.current?.focus());
+    },
+    [field, panel, pinBottom, rememberBottom],
+  );
+
+  const openPanel = useCallback(
+    (mode: ChatPanelMode, tab?: ChatPickerTab) => {
+      if (disabled) return;
+      rememberBottom();
+      if (tab) {
+        setPickerTab(tab);
+        writeLastChatPickerTab(tab);
+      }
+      if (panel === mode) {
+        // Avatar asks for Stickers while the picker is on another tab: switch
+        // tabs instead of closing. Pressing the same trigger twice closes.
+        if (mode === "picker" && tab && tab !== pickerTab) {
+          setPickerTab(tab);
+          writeLastChatPickerTab(tab);
+          return;
+        }
+        closePanel();
+        return;
+      }
+      setPanel(mode);
+      const height = clampPanelHeight(readStoredKeyboardHeight());
+      setPanelHeight(height);
+      field.current?.blur();
+      if (!closeHistoryRef.current) {
+        closeHistoryRef.current = true;
+        try {
+          window.history.pushState({ rizzChatPanel: true }, "");
+        } catch {
+          // In-app WebViews can refuse history changes.
+        }
+      }
+    },
+    [closePanel, disabled, field, panel, pickerTab, rememberBottom],
+  );
+
+  const changeTab = useCallback((tab: ChatPickerTab) => {
+    setPickerTab(tab);
+    writeLastChatPickerTab(tab);
+  }, []);
+
+  useEffect(() => {
+    if (!panel) return;
+    const onKeyDownWindow = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closePanel(true);
+    };
+    const onPopState = () => {
+      closeHistoryRef.current = false;
+      rememberBottom();
+      setPanel(null);
+      requestAnimationFrame(() => pinBottom());
+    };
+    window.addEventListener("keydown", onKeyDownWindow);
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("keydown", onKeyDownWindow);
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [closePanel, panel, pinBottom, rememberBottom]);
+
   useEffect(() => {
     const node = field.current?.element();
     if (!node) return;
@@ -146,8 +371,6 @@ export function MessageComposer({
     node.style.overflowY = node.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
   }, [value, field]);
 
-  // Entering reply/edit mode is a user intent to type, so the keyboard should
-  // already be up. The ref keeps unrelated composer renders from stealing focus.
   useEffect(() => {
     if (reply && !hadReply.current) {
       requestAnimationFrame(() => field.current?.focus());
@@ -189,28 +412,95 @@ export function MessageComposer({
   const submit = () => {
     if (disabled || !canSendNow) return;
     onSend();
-    // The keyboard must stay up after a send; the screen also refocuses, this
-    // covers the browser that blurs the field when the button is pressed.
     field.current?.focus();
   };
+
+  const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = "";
+    if (files.length) onFilesSelected?.(files);
+  };
+
+  const openAttach = () => openPanel("attach");
 
   return (
     <div
       className={cn(
-        // Solid, not blurred: one opaque bar is cheaper to composite on a phone
-        // than a stack of translucent bars, and it cannot double up with a
-        // screen's own wrapper.
-        "composer-bar relative z-20 shrink-0 px-2.5 pt-1.5",
-        "pb-[max(env(safe-area-inset-bottom,0px),0.375rem)]",
+        // The shared glass bar from the native shell, plus the docked panel
+        // below it. The bar keeps the safe-area padding only when the panel is
+        // closed; the panel draws its own bottom inset.
+        "composer-bar relative z-20 flex shrink-0 flex-col",
+        panel ? "pb-0" : "pb-[max(env(safe-area-inset-bottom,0px),0.375rem)]",
       )}
+      data-chat-panel={panel ?? "closed"}
     >
-      <div className="mx-auto w-full max-w-3xl">
+      <input
+        ref={photosRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        hidden
+        onChange={handleFileInput}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={handleFileInput}
+      />
+      <input ref={filesRef} type="file" multiple hidden onChange={handleFileInput} />
+
+      <div className="mx-auto w-full max-w-3xl px-2.5 pt-1.5">
+        {pendingFiles.length ? (
+          <div className="mb-1.5 flex gap-1.5 overflow-x-auto pb-0.5">
+            {pendingFiles.map((file, index) => (
+              <div key={`${file.name}-${index}`} className="chat-pending-file">
+                {file.preview ? (
+                  <img src={file.preview} alt="" />
+                ) : (
+                  <span className="chat-pending-file__icon">
+                    <ImagePlus className="h-4 w-4" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[11px] font-semibold text-foreground">
+                    {file.name}
+                  </span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    {file.status === "error"
+                      ? (file.error ?? "Upload failed")
+                      : file.status === "uploading" || (file.progress ?? 100) < 100
+                        ? `Uploading… ${file.progress ?? 0}%`
+                        : formatBytes(file.size)}
+                  </span>
+                  {(file.status === "uploading" || (file.progress ?? 100) < 100) &&
+                  file.status !== "error" ? (
+                    <span className="chat-pending-file__bar" aria-hidden="true">
+                      <span style={{ width: `${Math.max(3, file.progress ?? 0)}%` }} />
+                    </span>
+                  ) : null}
+                </span>
+                {onRemovePendingFile ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemovePendingFile(index)}
+                    className="chat-pending-file__remove"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {above}
 
         {reply ? (
-          // 40px strip: a lime bar, the target of the reply, and one line of
-          // the message. The whole middle is a jump link on replies.
-          <div className="chat-reply-strip mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
+          <div className="chat-reply-strip mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-border bg-card">
             <span className="w-[3px] shrink-0 bg-primary" aria-hidden="true" />
             <button
               type="button"
@@ -221,7 +511,7 @@ export function MessageComposer({
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
                 {reply.label}
               </span>
-              <span className="truncate text-[11px] leading-tight text-[#bdbdbd]">
+              <span className="truncate text-[11px] leading-tight text-muted-foreground">
                 {reply.preview}
               </span>
             </button>
@@ -233,7 +523,7 @@ export function MessageComposer({
                 field.current?.focus();
               }}
               aria-label="Cancel reply"
-              className="grid w-10 shrink-0 place-items-center text-[#8f8f8f] transition-colors hover:text-white"
+              className="grid w-10 shrink-0 place-items-center text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -241,30 +531,43 @@ export function MessageComposer({
         ) : null}
 
         <div className="flex items-center gap-1.5">
-          {attach}
+          {attach ?? (
+            <button
+              type="button"
+              onClick={() => openPanel("attach")}
+              disabled={disabled}
+              aria-label="Attach a photo or file"
+              title="Attach"
+              aria-expanded={panel === "attach"}
+              className={cn(
+                "chat-composer-disc grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-40",
+                panel === "attach" && "border-primary/60 text-primary",
+              )}
+            >
+              <Plus className="h-[18px] w-[18px]" strokeWidth={2} strokeLinecap="round" />
+            </button>
+          )}
 
-          {/* The pill: 40px minimum, 20px radius. Focus is the caret plus a
-              quiet neutral border — no lime box around the field. */}
           <div
             className={cn(
               "relative flex min-w-0 flex-1 items-center rounded-[20px] border transition-colors duration-150",
               "motion-reduce:transition-none",
               disabled
-                ? "border-white/[0.08] bg-[#0d0d0d]"
-                : "border-white/[0.14] bg-[#121212] focus-within:border-white/25",
+                ? "border-border bg-muted"
+                : "border-border bg-card focus-within:border-foreground/25",
             )}
             style={{ minHeight: 40 }}
           >
             {recording ? (
               <div className="flex h-10 w-full items-center gap-2.5 px-2.5" aria-live="polite">
                 <span className="composer-record-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#ff5d68]" />
-                <span className="text-[13px] font-semibold tabular-nums text-[#f2f2f2]">
+                <span className="text-[13px] font-semibold tabular-nums text-foreground">
                   {formatTimer(recordMs)}
                 </span>
                 <span
                   className={cn(
                     "ml-auto truncate text-[11px]",
-                    sliding ? "font-bold text-[#ff8a91]" : "text-[#8c8c8c]",
+                    sliding ? "font-bold text-[#ff8a91]" : "text-muted-foreground",
                   )}
                 >
                   {sliding ? "Release to cancel" : "Slide to cancel"}
@@ -274,10 +577,14 @@ export function MessageComposer({
               <>
                 <button
                   type="button"
-                  onClick={onEmoji}
+                  onClick={() => {
+                    onEmoji?.();
+                    openPanel("picker", pickerTab);
+                  }}
                   disabled={disabled}
                   aria-label="Emoji, GIFs and stickers"
                   title="Emoji, GIFs and stickers"
+                  aria-expanded={panel === "picker"}
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary transition-opacity disabled:opacity-40"
                 >
                   <Smile className="h-5 w-5" strokeWidth={2} />
@@ -285,45 +592,56 @@ export function MessageComposer({
                 <ComposerInput
                   ref={field}
                   value={value}
-                  onChange={(next) => onChange(next, next.length)}
+                  onChange={(next, nextCaret) => onChange(next, nextCaret)}
                   disabled={disabled}
                   onKeyUp={onKeyUp}
-                  onClick={() => onTextareaClick?.()}
+                  onClick={() => {
+                    closePanel();
+                    onTextareaClick?.();
+                  }}
                   onPaste={(event) => onPaste?.(event)}
                   onPasteFiles={onPasteFiles}
-                  onFocus={onFocus}
+                  onFocus={() => {
+                    closePanel();
+                    onFocus?.();
+                  }}
                   onBlur={onBlur}
                   onEnter={submit}
                   resolveEmoji={resolveEmoji}
                   onKeyDown={(event) => {
                     onKeyDown?.(event);
                     if (event.defaultPrevented) return;
-                    // Enter-to-send lives inside ComposerInput: it knows about
-                    // IME composition and phone keyboards. Slash menus still
-                    // see the key first, through the handler above.
                   }}
                   placeholder={disabled ? disabledHint : placeholder}
                   ariaLabel={placeholder}
                   maxLength={maxLength}
                   enterKeyHint="send"
-                  className={disabled ? "text-[#6f6f6f]" : undefined}
+                  className={disabled ? "text-muted-foreground" : "text-foreground"}
                   style={{ maxHeight: MAX_INPUT_HEIGHT }}
                 />
-                <button
-                  type="button"
-                  onClick={onStickers}
-                  disabled={disabled}
-                  aria-label="Cat emojis"
-                  title="Cat emojis"
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#8f8f8f] transition-colors hover:text-primary disabled:opacity-40"
-                >
-                  <Cat className="h-5 w-5" strokeWidth={1.8} />
-                </button>
               </>
             )}
             {mentions}
             {overlay}
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onStickers?.();
+              openPanel("picker", "stickers");
+            }}
+            disabled={disabled}
+            aria-label="Your stickers"
+            title="Stickers"
+            aria-expanded={panel === "picker"}
+            className={cn(
+              "chat-composer-avatar shrink-0 rounded-full",
+              panel === "picker" && "chat-composer-avatar--active",
+            )}
+          >
+            {avatarUrl ? <img src={avatarUrl} alt="" /> : <span aria-hidden="true">+</span>}
+          </button>
 
           {(!allowVoice || canSendNow) && !recording ? (
             <button
@@ -332,15 +650,12 @@ export function MessageComposer({
               disabled={disabled || sending || !canSendNow}
               aria-label={sending ? "Sending message" : "Send"}
               className={cn(
-                "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-[#0b0b0b]",
+                "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground",
                 "transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none",
                 "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               )}
             >
-              <span
-                key={canSendNow ? "send" : "idle"}
-                className="composer-action-swap grid place-items-center"
-              >
+              <span className="composer-action-swap grid place-items-center">
                 <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.6} />
               </span>
             </button>
@@ -357,21 +672,59 @@ export function MessageComposer({
               aria-label={recording ? "Release to send voice message" : "Voice message"}
               aria-pressed={recording}
               className={cn(
-                "grid shrink-0 touch-none place-items-center rounded-full bg-primary text-[#0b0b0b]",
+                "grid shrink-0 touch-none place-items-center rounded-full bg-primary text-primary-foreground",
                 "transition-[width,height,transform] duration-150 active:scale-[0.94] motion-reduce:transition-none",
                 "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 recording ? "h-12 w-12" : "h-10 w-10",
               )}
             >
-              <span
-                key={recording ? "rec" : "mic"}
-                className="composer-action-swap grid place-items-center"
-              >
-                <Mic className={recording ? "h-5 w-5" : "h-[18px] w-[18px]"} strokeWidth={2.5} />
-              </span>
+              <Mic className={recording ? "h-5 w-5" : "h-[18px] w-[18px]"} strokeWidth={2.5} />
             </button>
           )}
         </div>
+      </div>
+
+      <div
+        className={cn(
+          "chat-dock-shell shrink-0 overflow-hidden transition-[height] duration-[180ms] ease-out motion-reduce:transition-none",
+          panel ? "border-t border-border bg-background" : "border-t-0",
+        )}
+        style={{ height: panel ? panelHeight : 0, pointerEvents: panel ? "auto" : "none" }}
+        aria-hidden={!panel}
+      >
+        {renderedPanel ? (
+          <ChatDockPanel
+            mode={renderedPanel}
+            tab={pickerTab}
+            onTabChange={changeTab}
+            disabled={disabled}
+            onPickEmoji={onPickEmoji}
+            onSendMarker={onSendMarker}
+            onManageEmoji={onManageEmoji}
+            recentPhotos={recentPhotos}
+            onPickRecentPhoto={onPickRecentPhoto}
+            onPhotos={() => photosRef.current?.click()}
+            onCamera={() => cameraRef.current?.click()}
+            onFiles={() => filesRef.current?.click()}
+            onSchedule={
+              onSchedule
+                ? () => {
+                    closePanel();
+                    onSchedule();
+                  }
+                : undefined
+            }
+            onPoll={
+              onPoll
+                ? () => {
+                    closePanel();
+                    onPoll();
+                  }
+                : undefined
+            }
+            scheduleDisabled={scheduleDisabled}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -382,4 +735,14 @@ function formatTimer(ms: number) {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-export default MessageComposer;
+function formatBytes(bytes: number) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+/** Backwards-compatible name while screens migrate to the shared component. */
+export const MessageComposer = ChatComposer;
+
+export default ChatComposer;

@@ -226,7 +226,7 @@ export async function fetchGroupMessageById(messageId: string) {
   return { ...data, author: authors.get(data.author_id) ?? null };
 }
 
-export async function sendGroupMessage(input: { group_id: string; author_id: string; body: string; attachment_url?: string | null; reply_to?: string | null }) {
+export async function sendGroupMessage(input: { group_id: string; author_id: string; body: string; attachment_url?: string | null; reply_to?: string | null; card?: import("@/integrations/supabase/types").Database["public"]["Tables"]["group_messages"]["Insert"]["card"] }) {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
   const currentUser = authData.user;

@@ -2,13 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Folder, Palette, X, Forward, CornerUpLeft, BarChart3, Smile } from "lucide-react";
-import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
-import { MessageComposer } from "@/components/chat/MessageComposer";
+import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, Palette, Forward, CornerUpLeft } from "lucide-react";
+import { ChatComposer, type PendingComposerFile } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
-import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
-import { EmojiPicker } from "@/components/emoji/EmojiPicker";
 import { emojiToken } from "@/lib/emoji-shared";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { ChatPollCard } from "@/components/chat/PollCard";
@@ -37,12 +34,18 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/lib/toast";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
-import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { WallpaperSheet } from "@/components/chat/WallpaperSheet";
 import { loadWallpaper, wallpaperStyle, type ChatWallpaper } from "@/lib/chat-wallpaper";
-import { compressChatImage, prepareChatImagePreview } from "@/lib/chat-media";
+import { ChatFileCardView } from "@/components/chat/ChatFileCard";
+import {
+  asChatFileCard,
+  makeChatFileDraft,
+  releaseChatFileDraft,
+  uploadChatFileDraft,
+  type ChatFileDraft,
+} from "@/lib/chat-files";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
@@ -86,14 +89,11 @@ function GroupRoom() {
   // Per-group wallpaper: a preset or an uploaded background URL.
   const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
-  // Photo attachments, mirroring DMs: preview locally, upload on send.
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  // Attachments upload as soon as they are picked, so the chip can show real
+  // progress and Send never waits on a large file.
+  const [pendingFiles, setPendingFiles] = useState<ChatFileDraft[]>([]);
   const [pollOpen, setPollOpen] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const filesInputRef = useRef<HTMLInputElement>(null);
+  const imageObjectUrlsRef = useRef(new Set<string>());
   // Replying is composer state, like Discord: the bar sits above the box, the
   // keyboard opens, and the chat settles on the newest message.
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; author: string | null } | null>(null);
@@ -113,9 +113,6 @@ function GroupRoom() {
   }, [availableEmoji.data]);
   const scrolledGroupIdRef = useRef<string | null>(null);
   const [caret, setCaret] = useState(0);
-  const [emojiOpen, setEmojiOpen] = useState(false);
-  const [catOpen, setCatOpen] = useState(false);
-  const [gifOpen, setGifOpen] = useState(false);
   const [olderMessages, setOlderMessages] = useState<Awaited<ReturnType<typeof fetchGroupMessages>>>([]);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -135,11 +132,11 @@ function GroupRoom() {
   type GroupMessage = Awaited<ReturnType<typeof fetchGroupMessages>>[number];
   type CachedGroupMessage = GroupMessage & { delivery_status?: "sending" | "failed" };
   const sendMessage = useMutation({
-    mutationFn: ({ text, attachmentUrl, replyToId }: { text: string; retryId?: string; attachmentUrl?: string | null; replyToId?: string | null }) => {
+    mutationFn: ({ text, attachmentUrl, replyToId, card }: { text: string; retryId?: string; attachmentUrl?: string | null; replyToId?: string | null; card?: CachedGroupMessage["card"] }) => {
       if (!user) throw new Error("Sign in to send a message");
-      return sendGroupMessage({ group_id: id, author_id: user.id, body: text, attachment_url: attachmentUrl ?? null, reply_to: replyToId ?? null });
+      return sendGroupMessage({ group_id: id, author_id: user.id, body: text, attachment_url: attachmentUrl ?? null, reply_to: replyToId ?? null, card });
     },
-    onMutate: ({ text, retryId, attachmentUrl, replyToId }) => {
+    onMutate: ({ text, retryId, attachmentUrl, replyToId, card }) => {
       // Paint the optimistic row now; cancelling the in-flight query can happen
       // in the background and must never delay the composer.
       void qc.cancelQueries({ queryKey: messageKey });
@@ -153,6 +150,7 @@ function GroupRoom() {
         // The uploaded URL is already known before sending, so the optimistic
         // row shows the real photo and a retry keeps it.
         attachment_url: attachmentUrl ?? null,
+        card: (card ?? null) as CachedGroupMessage["card"],
         audio_url: null,
         duration_ms: null,
         reply_to: replyToId ?? null,
@@ -275,37 +273,78 @@ function GroupRoom() {
     setWallpaper(loadWallpaper("group", id));
   }, [id]);
 
-  useEffect(() => () => {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-  }, [imagePreview]);
+  useEffect(
+    () => () => {
+      imageObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
 
-  const chooseImage = async (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Choose an image file.");
-      return;
-    }
-    const uploadLimit = chatUploadLimitBytes(profile);
-    if (file.size > uploadLimit) {
-      toast.error(
-        `Images must be smaller than ${formatUploadLimit(uploadLimit)} before compression.`,
-      );
-      return;
-    }
+  const uploadDraft = async (draft: ChatFileDraft) => {
+    if (!user) return;
     try {
-      // Preview the compressed image, not the original: decoding a full-size
-      // camera photo is what could crash the tab right after the picker closed.
-      const preview = await prepareChatImagePreview(file);
-      setImageFile(file);
-      setImagePreview(preview);
-    } catch {
-      toast.error("That photo couldn't be prepared. Try a JPG or PNG.");
+      const result = await uploadChatFileDraft(draft, user.id, (progress) =>
+        setPendingFiles((current) =>
+          current.map((file) => (file.id === draft.id ? { ...file, progress } : file)),
+        ),
+      );
+      setPendingFiles((current) =>
+        current.map((file) =>
+          file.id === draft.id ? { ...file, ...result, progress: 100, status: "ready" } : file,
+        ),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Couldn't upload that file.";
+      setPendingFiles((current) =>
+        current.map((file) =>
+          file.id === draft.id ? { ...file, status: "error", error: message } : file,
+        ),
+      );
+      toast.error(message);
     }
   };
 
-  const clearImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
+  const addFiles = (files: File[]) => {
+    if (!files.length) return;
+    const uploadLimit = chatUploadLimitBytes(profile);
+    const accepted: ChatFileDraft[] = [];
+    for (const file of files) {
+      if (file.size > uploadLimit) {
+        toast.error(`${file.name || "That file"} is larger than ${formatUploadLimit(uploadLimit)}.`);
+        continue;
+      }
+      const draft = makeChatFileDraft(file);
+      if (draft.preview) imageObjectUrlsRef.current.add(draft.preview);
+      accepted.push(draft);
+    }
+    if (!accepted.length) return;
+    const room = Math.max(0, 10 - pendingFiles.length);
+    if (!room) {
+      toast.error("You can attach up to 10 files at once.");
+      accepted.forEach(releaseChatFileDraft);
+      return;
+    }
+    const batch = accepted.slice(0, room);
+    if (batch.length < accepted.length) {
+      toast.error("You can attach up to 10 files at once.");
+      accepted.slice(room).forEach(releaseChatFileDraft);
+    }
+    setPendingFiles((current) => [...current, ...batch].slice(0, 10));
+    batch.forEach((draft) => void uploadDraft(draft));
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles((current) => {
+      const target = current[index];
+      if (target) {
+        releaseChatFileDraft(target);
+        imageObjectUrlsRef.current.delete(target.preview ?? "");
+        if (target.path) {
+          void supabase.storage.from("chat-media").remove([target.path]).catch(() => {});
+        }
+      }
+      return current.filter((_, i) => i !== index);
+    });
   };
 
   // Tapping Reply opens the keyboard and keeps the bar above it, the way
@@ -327,39 +366,46 @@ function GroupRoom() {
     if (!user) return;
     const draft = body.trim();
     keepComposerFocused();
-    if (!draft && !imageFile) return;
+    if (!draft && !pendingFiles.length) return;
     if (draft.length > GROUP_MESSAGE_LIMIT) {
       toast.error(`Messages can be up to ${GROUP_MESSAGE_LIMIT.toLocaleString()} characters`);
       return;
     }
-    const replyId = replyTo?.id ?? null;
-    setReplyTo(null);
-    if (imageFile) {
-      setUploadingImage(true);
-      try {
-        const blob = await compressChatImage(imageFile);
-        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-        const { error } = await supabase.storage
-          .from("chat-media")
-          .upload(path, blob, { contentType: "image/jpeg" });
-        if (error) {
-          throw new Error(/bucket|not found|does not exist|schema cache/i.test(error.message)
-            ? "Photo sending needs the chat-media storage setup in BACKEND_REQUIREMENTS.md."
-            : error.message);
-        }
-        const attachmentUrl = supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
-        sendMessage.mutate({ text: draft, attachmentUrl, replyToId: replyId });
-        setBody("");
-        clearImage();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Couldn't send that photo");
-      } finally {
-        setUploadingImage(false);
-      }
+    if (pendingFiles.some((file) => file.status === "uploading")) {
+      toast.info("One moment — the upload is still finishing");
       return;
     }
+    const files = pendingFiles.filter((file) => file.status === "ready" && file.url);
+    if (pendingFiles.length && !files.length) {
+      toast.error("Remove the failed file and try again.");
+      return;
+    }
+    const replyId = replyTo?.id ?? null;
+    setReplyTo(null);
     setBody("");
-    sendMessage.mutate({ text: draft, replyToId: replyId });
+    setPendingFiles([]);
+    if (!files.length) {
+      sendMessage.mutate({ text: draft, replyToId: replyId });
+      return;
+    }
+    files.forEach((file, index) => {
+      sendMessage.mutate({
+        text: index === 0 ? draft : "",
+        attachmentUrl: file.url,
+        card: file.card ?? null,
+        replyToId: index === 0 ? replyId : null,
+      });
+      // The optimistic row uses the uploaded URL, not the local preview.
+      releaseChatFileDraft(file);
+      imageObjectUrlsRef.current.delete(file.preview ?? "");
+    });
+  };
+
+  const sendMarker = (marker: string) => {
+    if (!user) return;
+    keepComposerFocused();
+    sendMessage.mutate({ text: marker, replyToId: replyTo?.id ?? null });
+    setReplyTo(null);
   };
 
   const deleteMessage = async (messageId: string) => {
@@ -452,9 +498,14 @@ function GroupRoom() {
     const seen = new Set<string>();
     const out: { id: string; url: string }[] = [];
     for (let i = visibleMessages.length - 1; i >= 0 && out.length < 12; i -= 1) {
-      const message = visibleMessages[i] as { id?: string; attachment_url?: string | null };
+      const message = visibleMessages[i] as {
+        id?: string;
+        attachment_url?: string | null;
+        card?: unknown;
+      };
       const url = message.attachment_url;
       if (!url || seen.has(url) || String(message.id ?? "").startsWith("pending-")) continue;
+      if (asChatFileCard(message.card)) continue;
       seen.add(url);
       out.push({ id: String(message.id ?? url), url });
     }
@@ -468,7 +519,7 @@ function GroupRoom() {
       const blob = await response.blob();
       if (!blob.type.startsWith("image/")) throw new Error("not an image");
       const extension = (blob.type.split("/")[1] ?? "jpg").split("+")[0];
-      await chooseImage(new File([blob], `photo.${extension}`, { type: blob.type }));
+      addFiles([new File([blob], `photo.${extension}`, { type: blob.type })]);
     } catch {
       toast.error("Couldn't open that photo.");
     }
@@ -624,6 +675,7 @@ function GroupRoom() {
           {visibleMessages.map((m: any, index) => {
             const mine = m.author_id === user?.id;
             const deletedAt = m.deleted_at as string | null | undefined;
+            const fileCard = asChatFileCard(m.card);
             const replySource = m.reply_to
               ? visibleMessages.find((row) => row.id === m.reply_to)
               : null;
@@ -800,13 +852,15 @@ function GroupRoom() {
                           }
                         />
                       ) : null}
-                      {m.attachment_url && !deletedAt && (
+                      {fileCard && !deletedAt ? (
+                        <ChatFileCardView file={fileCard} className={hasText ? "mb-1" : ""} />
+                      ) : m.attachment_url && !deletedAt ? (
                         <ChatMessageMedia
                           src={m.attachment_url}
                           alt="Image shared in chat"
                           className={hasText ? "mb-1" : ""}
                         />
-                      )}
+                      ) : null}
                       {deletedAt ? (
                         <span className="text-[13px] italic text-muted-foreground">
                           This message was unsent
@@ -864,7 +918,7 @@ function GroupRoom() {
                   {m.delivery_status ? (
                     m.delivery_status === "failed" ? (
                       <button
-                        onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id, attachmentUrl: m.attachment_url, replyToId: m.reply_to ?? null })}
+                        onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id, attachmentUrl: m.attachment_url, card: m.card, replyToId: m.reply_to ?? null })}
                         disabled={sendMessage.isPending}
                         className="mt-0.5 text-[10px] text-amber-200/80 hover:text-amber-100"
                       >
@@ -889,75 +943,43 @@ function GroupRoom() {
 
       <div className="relative z-20 shrink-0">
         <div className="mx-auto w-full max-w-3xl">
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
-          />
-          {/* Photos come from the library; Files comes from the device's own
-              file browser. Same upload, two doors. */}
-          <input
-            ref={filesInputRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
-          />
-          <MessageComposer
+          <ChatComposer
             value={body}
             onChange={(next, nextCaret) => {
               setBody(next);
               setCaret(nextCaret);
             }}
             onSend={() => void send()}
-            onEmoji={() => setEmojiOpen(true)}
-            onStickers={() => setCatOpen(true)}
+            onPickEmoji={(token) => {
+              const el = composerRef.current;
+              if (!el) return;
+              el.insertEmoji(token);
+              const next = el.getValue();
+              setBody(next);
+              setCaret(el.getCaret());
+            }}
+            onSendMarker={sendMarker}
+            onFilesSelected={addFiles}
+            pendingFiles={pendingFiles as PendingComposerFile[]}
+            onRemovePendingFile={removePendingFile}
+            avatarUrl={profile?.avatar_url ?? null}
+            scrollRef={messagesListRef}
+            recentPhotos={recentPhotos}
+            onPickRecentPhoto={(url) => void pickRecentPhoto(url)}
+            onPoll={() => setPollOpen(true)}
             placeholder="Message"
             maxLength={GROUP_MESSAGE_LIMIT}
             inputRef={composerRef}
             resolveEmoji={(parts) => emojiUrlById.get(parts.id) ?? null}
-            sending={uploadingImage}
-            canSend={Boolean(body.trim() || imageFile)}
+            sending={pendingFiles.some((file) => file.status === "uploading") || sendMessage.isPending}
+            canSend={Boolean(body.trim() || pendingFiles.length)}
             allowVoice={false}
-            above={imagePreview ? (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-                <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Ready to send</span>
-                <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : null}
             reply={replyTo ? {
               label: `Replying to ${replyTo.author ? `@${replyTo.author}` : "them"}`,
               preview: replyPreviewText({ body: replyTo.body }),
               onCancel: () => setReplyTo(null),
               onJump: () => void jumpToReply(replyTo.id),
             } : null}
-            attach={<ChatAttachButton
-              appearance="circle"
-              label="Attach"
-              disabled={uploadingImage}
-              actions={[
-                { id: "photo", label: "Photos", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
-                { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
-                { id: "gif", label: "Apps", hint: "GIFs and stickers", icon: Smile, onSelect: () => setGifOpen(true) },
-                { id: "poll", label: "Poll", hint: "Ask the group", icon: BarChart3, onSelect: () => setPollOpen(true), disabled: uploadingImage },
-                { id: "files", label: "Files", hint: "Browse device", icon: Folder, onSelect: () => filesInputRef.current?.click() },
-              ]}
-              photos={recentPhotos}
-              onPickPhoto={(url) => void pickRecentPhoto(url)}
-            />}
             // The mention popup anchors to the composer's own wrapper, so it
             // opens above the field instead of the nearest positioned ancestor.
             mentions={<MentionAutocomplete
@@ -979,26 +1001,7 @@ function GroupRoom() {
               scrollChatToLatest(messagesListRef.current);
             }}
             onFocus={() => scrollChatToLatest(messagesListRef.current)}
-          />
-          <EmojiPicker
-            open={emojiOpen}
-            onOpenChange={setEmojiOpen}
-            title="Add emoji"
-            onPick={(pick) => {
-              const token = pick.kind === "unicode" ? pick.value : emojiToken(pick.emoji);
-              setBody((current) => `${current}${token}`.slice(0, GROUP_MESSAGE_LIMIT));
-            }}
-          />
-          <CatStickerSheet
-            open={catOpen}
-            onOpenChange={setCatOpen}
-            onPick={(shortcode) => setBody((current) => `${current}${shortcode}`.slice(0, GROUP_MESSAGE_LIMIT))}
-          />
-          <GifPicker
-            open={gifOpen}
-            onOpenChange={setGifOpen}
-            hideTrigger
-            onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))}
+            onPasteFiles={addFiles}
           />
         </div>
       </div>
