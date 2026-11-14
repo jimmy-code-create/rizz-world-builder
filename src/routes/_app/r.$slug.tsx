@@ -2096,7 +2096,7 @@ function RealmPage() {
                         author: authorName,
                         attachmentUrl: m.attachment_url ?? null,
                       });
-                      requestAnimationFrame(() => composerRef.current?.focus());
+                      composerRef.current?.focus();
                     }}
                     disabled={!canReply}
                   >
@@ -2133,7 +2133,7 @@ function RealmPage() {
                                 author: authorName,
                                 attachmentUrl: m.attachment_url ?? null,
                               });
-                              requestAnimationFrame(() => composerRef.current?.focus());
+                              composerRef.current?.focus();
                             }}
                           >
                             <CornerUpLeft className="h-4 w-4" aria-hidden="true" />
@@ -2270,7 +2270,7 @@ function RealmPage() {
                                         author: authorName,
                                         attachmentUrl: m.attachment_url ?? null,
                                       });
-                                      requestAnimationFrame(() => composerRef.current?.focus());
+                                      composerRef.current?.focus();
                                     },
                                   },
                                 ]

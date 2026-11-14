@@ -94,7 +94,7 @@
 }
 
 .rizz-tab {
-  animation: rizz-tab-in 160ms ease both;
+  animation: rizz-tab-in 0ms ease both;
 }
 
 @keyframes rizz-tab-in {
