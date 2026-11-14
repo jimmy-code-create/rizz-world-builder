@@ -260,6 +260,38 @@ export function AppShell() {
   const isConversation =
     /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
+
+  /**
+   * The shell's top bar tucks away while reading downwards and returns on the
+   * way up. The screens own their scroll container, so the listener binds to
+   * that element; re-binding per route also resets the bar to visible, which is
+   * what a fresh screen wants (only the frame is coalesced, not the decision).
+   */
+  const [headerHidden, setHeaderHidden] = useState(false);
+  useEffect(() => {
+    setHeaderHidden(false);
+    const el = mainRef.current;
+    if (!el) return;
+    let last = el.scrollTop;
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const next = el.scrollTop;
+        const delta = next - last;
+        last = next;
+        if (next < 24) setHeaderHidden(false);
+        else if (delta > 8) setHeaderHidden(true);
+        else if (delta < -8) setHeaderHidden(false);
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [path]);
   const isWidePage =
     path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
 
@@ -440,6 +472,11 @@ export function AppShell() {
     (to !== "/feed" && path.startsWith(to + "/")) ||
     (to === "/realms" && path.startsWith("/r/"));
 
+  // Which of the five nav slots owns the sliding tile. The lime FAB sits in the
+  // third slot and is never a destination; "More" opens a sheet, so it never
+  // owns the tile either.
+  const activeNavSlot = isActive("/feed") ? 0 : isActive("/reels") ? 1 : isActive("/dms") ? 3 : -1;
+
   return (
     <div
       className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
@@ -570,8 +607,12 @@ export function AppShell() {
       {/* Mobile top bar */}
       {!isConversation && (
         <header
-          className="chat-bar md:hidden z-30 relative flex shrink-0 items-center gap-2 border-b border-border px-3 pb-2.5"
-          style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.5rem)" }}
+          data-hidden={headerHidden}
+          className="shell-header glass-chrome chrome chrome-auto-hide md:hidden absolute inset-x-0 top-0 z-40 flex items-center gap-2 px-3 pb-2"
+          style={{
+            minHeight: "var(--chrome-top)",
+            paddingTop: "max(var(--safe-top), 0.5rem)",
+          }}
         >
           <Link
             to="/feed"
@@ -629,6 +670,8 @@ export function AppShell() {
             : isWidePage
               ? "mx-auto w-full max-w-7xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
               : "mx-auto w-full max-w-3xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
+        } ${isConversation ? "" : "shell-main--header"} ${
+          isConversation || isReels ? "" : "shell-main--nav"
         }`}
       >
         <Outlet />
@@ -649,8 +692,20 @@ export function AppShell() {
       {/* Mobile bottom nav — five slots, lime active tile, oversized create FAB.
           Matches the docked bar design: icon over label, one accent per row. */}
       {!isConversation && (
-        <nav className="md:hidden z-30 shrink-0 border-t border-white/[0.06] bg-background/95 backdrop-blur-xl px-1.5 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
-          <div className="mx-auto flex max-w-[560px] items-center justify-between gap-0.5">
+        <nav aria-label="Primary" className="shell-nav glass-panel chrome md:hidden px-1.5 pt-1.5 pb-1.5">
+          <div className="relative mx-auto flex max-w-[560px] items-center justify-between gap-0.5">
+            {/* One tile for the whole bar: it slides to whichever slot is live,
+                so the active state moves instead of eight backgrounds blinking. */}
+            <span
+              aria-hidden="true"
+              className="shell-nav__indicator"
+              style={{
+                transform: `translateX(${Math.max(activeNavSlot, 0) * 100}%)`,
+                opacity: activeNavSlot < 0 ? 0 : 1,
+              }}
+            >
+              <span className="mx-auto mt-0.5 grid h-10 w-10 place-items-center rounded-xl bg-primary/15" />
+            </span>
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
               return (
@@ -666,7 +721,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="flex min-h-[48px] min-w-[40px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
+              className="shell-nav__fab flex min-h-[48px] min-w-[40px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
               aria-label="Create"
             >
               <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
@@ -957,11 +1012,9 @@ function NavBtn({
       to={to}
       className="flex min-h-[48px] flex-1 flex-col items-center justify-start gap-[2px] pt-0.5 focus-visible:outline-none"
     >
-      <span
-        className={`grid h-10 w-10 place-items-center rounded-xl transition-colors ${
-          active ? "bg-primary/15" : ""
-        }`}
-      >
+      {/* The tile itself is the bar's sliding indicator; this span keeps its
+          exact size and radius so nothing about the item's shape moves. */}
+      <span className="grid h-10 w-10 place-items-center rounded-xl transition-colors">
         <Icon
           className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
           strokeWidth={active ? 2.2 : 1.8}

@@ -4822,3 +4822,68 @@ body {
     background: var(--background);
   }
 }
+
+/* ============================================================================
+   NATIVE SHELL · PHASE 2 — APP SHELL
+   ----------------------------------------------------------------------------
+   The top bar floats over the content (so the glass has something to blur) and
+   the bottom nav floats above it; the screens' scroll containers reserve the
+   exact space each one covers while it is on screen. Nothing here moves a
+   control that already existed — only the layers they sit on.
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* A scrolling screen keeps the header's space at the top, so the first row
+     never starts underneath it, and keeps the dock's space at the bottom, so
+     the last row can still be scrolled clear of the nav. */
+  .shell-main--header {
+    padding-top: calc(var(--chrome-top) + 12px) !important;
+  }
+  .shell-main--nav {
+    padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 20px) !important;
+  }
+}
+
+/* The nav's bottom edge sits on the safe area, not on the screen edge. */
+.shell-nav {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: var(--dock-bottom);
+  margin-inline: auto;
+  max-width: 560px;
+  border-radius: var(--r-md);
+  z-index: 40;
+}
+
+/* The active tile slides between slots instead of repainting per item. */
+.shell-nav__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20%;
+  height: 100%;
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    opacity var(--dur-fast) linear;
+  will-change: transform;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-nav__indicator {
+    transition: opacity var(--dur-fast) linear;
+  }
+}
+
+/* The lime FAB is unchanged; it just sits a little proud of the glass. */
+.shell-nav__fab {
+  position: relative;
+  top: -12px;
+}
+
+/* The top bar is edge-to-edge: the glass carries the bottom edge only. */
+.shell-header {
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
