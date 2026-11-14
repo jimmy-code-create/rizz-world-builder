@@ -106,6 +106,22 @@ function SettingsHubPage() {
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
       </Link>
 
+      <Link
+        to="/cat-studio"
+        className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-white/5 glass px-4 py-2.5 transition-colors hover:bg-white/5"
+      >
+        <span className="grid h-10 w-10 place-items-center rounded-[14px] border border-primary/30 bg-primary/10 text-[15px]">
+          🐈
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">Cat Studio</span>
+          <span className="block truncate text-xs text-muted-foreground">
+            Build a cat avatar, shape it, dress it up
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      </Link>
+
       <button
         type="button"
         onClick={() => setStatusOpen(true)}

@@ -66,6 +66,9 @@ export function useCatStudio() {
     mutationFn: async (itemId: string) => {
       const item = getCatItem(itemId);
       if (!item) throw new Error("That item does not exist.");
+      if (!availability.available) {
+        throw new Error("Apply supabase/migrations/pending_catstudio.sql, then buy.");
+      }
       // One RPC: it locks the wallet, so a double tap cannot charge twice.
       const { data, error } = await db.rpc("buy_cat_item", { _item: itemId });
       if (error) throw error;
@@ -84,6 +87,9 @@ export function useCatStudio() {
   const save = useMutation({
     mutationFn: async (input: CatConfig) => {
       if (!user) throw new Error("Sign in to save your cat.");
+      if (!availability.available) {
+        throw new Error("Apply supabase/migrations/pending_catstudio.sql, then save.");
+      }
       const config = sanitizeCatConfig(input);
       const body = serializeCatConfig(config);
 
@@ -118,6 +124,8 @@ export function useCatStudio() {
 
   return {
     available: availability.available,
+    /** No tables yet: the builder still runs, it just cannot buy or save. */
+    preview: !availability.available && !availability.isLoading,
     loading: availability.isLoading || (inventory.isLoading && availability.available),
     profile,
     user,

@@ -24,24 +24,26 @@ function CatStudioRoute() {
     );
   }
 
-  if (!availability.available) {
-    return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-5 py-16 text-center">
-        <h1 className="font-display text-xl font-bold">Cat Studio isn&apos;t switched on yet</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          The cat tables haven&apos;t been applied to this database. Once the pending migration is
-          run, your cat will appear here.
-        </p>
-        <button
-          type="button"
-          onClick={() => nav({ to: "/settings/profile" })}
-          className="h-11 rounded-[14px] border border-white/12 px-4 text-[13px] font-semibold"
-        >
-          Back to profile
-        </button>
-      </div>
-    );
-  }
-
-  return <CatStudioScreen />;
+  return (
+    <>
+      {!availability.available && (
+        <div className="flex shrink-0 items-start gap-2 border-b border-[#e8c15a]/30 bg-[#e8c15a]/10 px-3 py-2 text-[11.5px] leading-snug text-[#f0d79a]">
+          <span className="font-bold">Preview.</span>
+          <span className="min-w-0 flex-1">
+            The cat tables aren&apos;t in this database yet, so buying and saving are off. Apply
+            <code className="mx-1 rounded bg-black/30 px-1">supabase/migrations/pending_catstudio.sql</code>
+            to unlock them.
+          </span>
+          <button
+            type="button"
+            onClick={() => nav({ to: "/settings/profile" })}
+            className="shrink-0 underline-offset-2 hover:underline"
+          >
+            Back
+          </button>
+        </div>
+      )}
+      <CatStudioScreen />
+    </>
+  );
 }

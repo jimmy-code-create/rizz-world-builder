@@ -23,7 +23,7 @@ export function CatAvatarEntry() {
   const isCat = (profile as Record<string, unknown> | null)?.avatar_type === "cat";
   const cat = catFromProfile(profile as Record<string, unknown> | null);
 
-  if (isLoading || !available) return null;
+  if (isLoading) return null;
 
   const switchToPhoto = async () => {
     if (!user) return;
@@ -56,7 +56,7 @@ export function CatAvatarEntry() {
           }`}
         >
           {cat && <CatAvatar config={cat} size={24} label="" />}
-          Cat
+          Cat{!available && <span className="text-[10px] font-medium opacity-70">preview</span>}
         </button>
       </div>
       {isCat && cat && (
