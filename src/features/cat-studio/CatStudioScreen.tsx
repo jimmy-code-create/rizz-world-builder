@@ -6,12 +6,12 @@
  * and Save · Randomize · Reset · Undo pinned at the bottom. One close button,
  * no glow, no gradients, 44px targets, sentence case.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Check, Lock, PawPrint, RotateCcw, Shuffle, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CatAvatar } from "./CatAvatar";
-import { CatAvatar3D } from "./CatAvatar3D";
+import { CatModel3D, type CatModelHandle } from "./CatModel3D";
 import {
   BREED_PRESETS,
   DEFAULT_CONFIG,
@@ -73,6 +73,8 @@ export function CatStudioScreen() {
   const [tab, setTab] = useState<TabId>("shape");
   const [trying, setTrying] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [view, setView] = useState<"3d" | "2d">("3d");
+  const model = useRef<CatModelHandle>(null);
 
   // Pick the saved cat up once the profile is there (it arrives after mount).
   const savedSignature = JSON.stringify(catFromProfile(studio.profile) ?? null);
@@ -144,7 +146,10 @@ export function CatStudioScreen() {
         </div>
         <button
           type="button"
-          onClick={() => studio.save.mutate(config)}
+          onClick={async () => {
+            const png = view === "3d" ? await model.current?.capturePng(512).catch(() => undefined) : undefined;
+            studio.save.mutate({ config, png });
+          }}
           disabled={studio.save.isPending}
           className="h-11 rounded-[14px] bg-primary px-4 text-[13px] font-bold text-primary-foreground transition-transform duration-150 active:scale-[0.97] disabled:opacity-50"
         >
@@ -152,19 +157,57 @@ export function CatStudioScreen() {
         </button>
       </header>
 
-      {/* Preview — capped at 40% of the viewport, tap to cycle expressions. */}
-      <button
-        type="button"
-        onClick={() => {
-          const index = EXPRESSIONS.indexOf(previewConfig.expression);
-          commit({ ...config, expression: EXPRESSIONS[(index + 1) % EXPRESSIONS.length] });
-        }}
-        aria-label="Change expression"
-        className="flex shrink-0 items-center justify-center border-b border-white/8 bg-surface-1 px-4 py-3"
+      {/* Preview — never taller than 40% of the viewport. The 3D model is the
+          default: drag it to turn, and Save captures exactly the pose shown. */}
+      <div
+        className="shrink-0 border-b border-white/8 bg-surface-1 px-3 py-2"
         style={{ maxHeight: "40vh" }}
       >
-        <CatAvatar3D config={previewConfig} size={240} className="h-[min(34vh,240px)] w-[min(34vh,240px)]" />
-      </button>
+        <div className="relative mx-auto h-[min(32vh,260px)] w-full max-w-[320px]">
+          {view === "3d" ? (
+            <CatModel3D config={previewConfig} handleRef={model} />
+          ) : (
+            <div className="grid h-full place-items-center">
+              <CatAvatar config={previewConfig} animated className="h-full w-auto" />
+            </div>
+          )}
+
+          <div className="absolute right-0 top-0 flex gap-1">
+            {(["3d", "2d"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setView(mode)}
+                aria-pressed={view === mode}
+                className={cn(
+                  "h-9 w-9 rounded-full border text-[11px] font-bold uppercase",
+                  view === mode
+                    ? "border-primary/50 bg-primary/15 text-primary"
+                    : "border-white/12 bg-background/70 text-muted-foreground",
+                )}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-1 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const index = EXPRESSIONS.indexOf(previewConfig.expression);
+              commit({ ...config, expression: EXPRESSIONS[(index + 1) % EXPRESSIONS.length] });
+            }}
+            className="h-9 rounded-full border border-white/12 px-3 text-[11.5px] font-semibold capitalize text-muted-foreground"
+          >
+            Expression: {previewConfig.expression}
+          </button>
+          <span className="text-[11px] text-muted-foreground">
+            {view === "3d" ? "Drag to turn" : "Tap expression"}
+          </span>
+        </div>
+      </div>
 
       {/* Try-on / buy bar. */}
       {(triedItem || confirming) && (

@@ -85,12 +85,13 @@ export function useCatStudio() {
   });
 
   const save = useMutation({
-    mutationFn: async (input: CatConfig) => {
+    mutationFn: async (input: { config: CatConfig; png?: Blob }) => {
+      const configInput = input.config;
       if (!user) throw new Error("Sign in to save your cat.");
       if (!availability.available) {
         throw new Error("Apply supabase/migrations/pending_catstudio.sql, then save.");
       }
-      const config = sanitizeCatConfig(input);
+      const config = sanitizeCatConfig(configInput);
       const body = serializeCatConfig(config);
 
       // 1. Server validates ownership + clamps the sliders and stores the config.
@@ -99,7 +100,7 @@ export function useCatStudio() {
 
       // 2. The PNG goes through the existing avatar bucket path, so every screen
       //    that reads avatar_url keeps working untouched.
-      const blob = await catPngBlob(config, 512);
+      const blob = input.png ?? (await catPngBlob(config, 512));
       const path = `${user.id}/cat-${Date.now()}.png`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
