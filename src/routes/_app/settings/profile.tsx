@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CatAvatarEntry } from "@/features/cat-studio/CatAvatarEntry";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 import { DEFAULT_AVATARS } from "@/lib/default-avatars";
 import { CustomEmoji } from "@/components/CustomEmoji";
@@ -358,6 +359,8 @@ function ProfileSettingsPage() {
               </span>
             </label>
           </div>
+
+          <CatAvatarEntry />
 
           <div>
             <Label className="text-xs text-muted-foreground">{t("profile_pick_cats")}</Label>

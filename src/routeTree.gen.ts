@@ -21,6 +21,7 @@ import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
 import { Route as AppBotsRouteImport } from './routes/_app/bots'
+import { Route as AppCatStudioRouteImport } from './routes/_app/cat-studio'
 import { Route as AppChatStoriesRouteImport } from './routes/_app/chat-stories'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppDrawPartyRouteImport } from './routes/_app/draw-party'
@@ -130,6 +131,11 @@ const AppBookmarksRoute = AppBookmarksRouteImport.update({
 const AppBotsRoute = AppBotsRouteImport.update({
   id: '/bots',
   path: '/bots',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCatStudioRoute = AppCatStudioRouteImport.update({
+  id: '/cat-studio',
+  path: '/cat-studio',
   getParentRoute: () => AppRoute,
 } as any)
 const AppChatStoriesRoute = AppChatStoriesRouteImport.update({
@@ -402,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
   '/bots': typeof AppBotsRouteWithChildren
+  '/cat-studio': typeof AppCatStudioRoute
   '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
   '/draw-party': typeof AppDrawPartyRoute
@@ -465,6 +472,7 @@ export interface FileRoutesByTo {
   '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
+  '/cat-studio': typeof AppCatStudioRoute
   '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
   '/draw-party': typeof AppDrawPartyRoute
@@ -531,6 +539,7 @@ export interface FileRoutesById {
   '/_app/badges': typeof AppBadgesRoute
   '/_app/bookmarks': typeof AppBookmarksRoute
   '/_app/bots': typeof AppBotsRouteWithChildren
+  '/_app/cat-studio': typeof AppCatStudioRoute
   '/_app/chat-stories': typeof AppChatStoriesRoute
   '/_app/dms': typeof AppDmsRoute
   '/_app/draw-party': typeof AppDrawPartyRoute
@@ -597,6 +606,7 @@ export interface FileRouteTypes {
     | '/badges'
     | '/bookmarks'
     | '/bots'
+    | '/cat-studio'
     | '/chat-stories'
     | '/dms'
     | '/draw-party'
@@ -660,6 +670,7 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/badges'
     | '/bookmarks'
+    | '/cat-studio'
     | '/chat-stories'
     | '/dms'
     | '/draw-party'
@@ -725,6 +736,7 @@ export interface FileRouteTypes {
     | '/_app/badges'
     | '/_app/bookmarks'
     | '/_app/bots'
+    | '/_app/cat-studio'
     | '/_app/chat-stories'
     | '/_app/dms'
     | '/_app/draw-party'
@@ -888,6 +900,13 @@ declare module '@tanstack/react-router' {
       path: '/bots'
       fullPath: '/bots'
       preLoaderRoute: typeof AppBotsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/cat-studio': {
+      id: '/_app/cat-studio'
+      path: '/cat-studio'
+      fullPath: '/cat-studio'
+      preLoaderRoute: typeof AppCatStudioRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/chat-stories': {
@@ -1267,6 +1286,7 @@ interface AppRouteChildren {
   AppBadgesRoute: typeof AppBadgesRoute
   AppBookmarksRoute: typeof AppBookmarksRoute
   AppBotsRoute: typeof AppBotsRouteWithChildren
+  AppCatStudioRoute: typeof AppCatStudioRoute
   AppChatStoriesRoute: typeof AppChatStoriesRoute
   AppDmsRoute: typeof AppDmsRoute
   AppDrawPartyRoute: typeof AppDrawPartyRoute
@@ -1306,6 +1326,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBadgesRoute: AppBadgesRoute,
   AppBookmarksRoute: AppBookmarksRoute,
   AppBotsRoute: AppBotsRouteWithChildren,
+  AppCatStudioRoute: AppCatStudioRoute,
   AppChatStoriesRoute: AppChatStoriesRoute,
   AppDmsRoute: AppDmsRoute,
   AppDrawPartyRoute: AppDrawPartyRoute,

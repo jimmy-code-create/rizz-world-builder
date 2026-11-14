@@ -5187,3 +5187,67 @@ body {
     animation: none;
   }
 }
+
+/* ============================================================================
+   CAT STUDIO — idle life for the cat, and the luxe shimmer (hover only)
+   ========================================================================== */
+.cat-avatar--animated .cat-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cat-blink 4s var(--ease-soft) infinite;
+}
+.cat-avatar--animated .cat-ear-l,
+.cat-avatar--animated .cat-ear-r {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: cat-ear-twitch 7s var(--ease-soft) infinite;
+}
+.cat-avatar--animated .cat-ear-r {
+  animation-delay: 180ms;
+}
+@keyframes cat-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%, 97% { transform: scaleY(0.08); }
+}
+@keyframes cat-ear-twitch {
+  0%, 90%, 100% { transform: rotate(0deg); }
+  93% { transform: rotate(-5deg); }
+  96% { transform: rotate(2deg); }
+}
+
+/* Luxe: one slow metallic sweep, and only while the pointer is on the card. */
+.cat-luxe {
+  position: relative;
+  overflow: hidden;
+}
+.cat-luxe::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 36%,
+    rgba(255, 255, 255, 0.16) 50%,
+    transparent 64%
+  );
+  transform: translateX(-130%);
+}
+.cat-luxe:hover::after {
+  animation: cat-shimmer 1.9s linear;
+}
+@keyframes cat-shimmer {
+  to { transform: translateX(130%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-avatar--animated .cat-eye,
+  .cat-avatar--animated .cat-ear-l,
+  .cat-avatar--animated .cat-ear-r,
+  .cat-luxe:hover::after {
+    animation: none;
+  }
+  .cat-luxe::after {
+    display: none;
+  }
+}
