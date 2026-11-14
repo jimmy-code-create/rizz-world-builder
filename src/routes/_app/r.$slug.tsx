@@ -399,6 +399,20 @@ function RealmPage() {
     };
   }, [activeRoomId, showVoiceChat]);
 
+  // Keep the live channel inside the rail: centre it on switch, and again when
+  // the rail is revealed after a moment of hiding.
+  useEffect(() => {
+    const row = subBarRef.current;
+    if (!row || !activeRoomId) return;
+    const chip = row.querySelector<HTMLElement>('[data-active="true"]');
+    if (!chip) return;
+    const left = chip.offsetLeft - (row.clientWidth - chip.clientWidth) / 2;
+    row.scrollTo({
+      left: Math.max(0, left),
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [activeRoomId, subBarHidden]);
+
   useEffect(() => {
     if (realm.data && user) {
       isRealmMember(realm.data.id, user.id).then(setJoined);
@@ -1101,11 +1115,8 @@ function RealmPage() {
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
-        className="glass-chrome glass-bar chrome relative z-20 flex shrink-0 items-center gap-3 px-4 pb-3"
-        style={{
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)",
-          boxShadow: `0 0 18px ${c.accent_color}14`,
-        }}
+        className="realm-deck__bar realm-deck__bar--top chrome relative z-20 flex shrink-0 items-center gap-2 px-3 pb-2 sm:gap-3 sm:px-4"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       >
         <Link
           to="/realms"
@@ -1115,7 +1126,7 @@ function RealmPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div
-          className="h-10 w-10 overflow-hidden rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/15"
+          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[14px] ring-1 ring-primary/45"
           style={{ background: `linear-gradient(135deg, ${c.accent_color || "#38bdf8"}, #2563eb)` }}
         >
           {c.icon_url ? (
@@ -1131,38 +1142,39 @@ function RealmPage() {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="font-display font-bold text-lg leading-tight break-words">{c.name}</h1>
-          <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-            <Users className="h-3 w-3" /> {c.member_count}
+          <h1 className="truncate font-display text-[17px] font-bold leading-tight">{c.name}</h1>
+          <p className="mt-0.5 flex h-4 items-center gap-1.5 overflow-hidden text-[11.5px] leading-4 text-muted-foreground">
+            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+            <span className="truncate">{c.member_count} members</span>
           </p>
         </div>
 
         <Button
-          size="sm"
-          variant="outline"
-          className="glass shrink-0 border-white/10"
+          size="icon"
+          variant="ghost"
+          className="realm-deck__action"
           aria-label="Search messages"
           onClick={() => setSearchOpen(true)}
         >
-          <Search className="h-4 w-4" />
+          <Search className="h-5 w-5" />
         </Button>
         <Button
-          size="sm"
-          variant="outline"
-          className="glass shrink-0 border-white/10"
+          size="icon"
+          variant="ghost"
+          className="realm-deck__action"
           aria-label="Levels"
           onClick={() => setLevelsOpen(true)}
         >
-          <Trophy className="h-4 w-4" />
+          <Trophy className="h-5 w-5" />
         </Button>
         <Button
-          size="sm"
-          variant="outline"
-          className="glass shrink-0 border-white/10"
+          size="icon"
+          variant="ghost"
+          className="realm-deck__action"
           aria-label="Realm options"
           onClick={() => setOptionsOpen(true)}
         >
-          <Settings className="h-4 w-4" />
+          <Settings className="h-5 w-5" />
         </Button>
         <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
           <DialogContent className="glass-strong border-white/10">
@@ -1574,7 +1586,7 @@ function RealmPage() {
         <div
           ref={subBarRef}
           data-hidden={subBarHidden}
-          className="realm-subbar flex shrink-0 items-center gap-2 overflow-x-auto px-3 py-2 no-scrollbar"
+          className="realm-deck__bar realm-deck__bar--bottom realm-chips flex shrink-0 items-center gap-2 overflow-x-auto px-3 no-scrollbar"
         >
           {(rooms.data as RealmRoom[]).map((room) => {
             const RoomIcon =
@@ -1590,12 +1602,13 @@ function RealmPage() {
                 key={room.id}
                 type="button"
                 onClick={() => selectRoom(room.id)}
-                className={`flex h-9 min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors ${
+                data-active={isActive ? "true" : undefined}
+                className={`flex h-9 min-h-[36px] shrink-0 snap-center items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors duration-150 active:scale-[0.97] ${
                   inThisCall
-                    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                    ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
                     : isActive
-                      ? "border-sky-300/40 bg-sky-400/10 text-sky-200 shadow-[0_0_18px_rgba(56,189,248,.1)]"
-                      : "border-white/10 bg-white/[0.035] text-white/70 hover:border-sky-200/25 hover:text-white"
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-white/10 bg-surface-1 text-muted-foreground hover:border-white/20 hover:text-foreground"
                 }`}
               >
                 {room.kind === "voice" && people.length > 0 ? (
@@ -1629,7 +1642,7 @@ function RealmPage() {
               <DialogTrigger asChild>
                 <button
                   type="button"
-                  className="grid h-9 min-h-[36px] w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
+                  className="grid h-9 min-h-[36px] w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-surface-1 text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
                   aria-label="New room"
                 >
                   <Plus className="h-4 w-4" />
@@ -1733,7 +1746,7 @@ function RealmPage() {
       )}
 
       {activeRoom?.kind === "voice" && (
-        <div className="glass-chrome glass-bar chrome shrink-0 px-3 py-2.5">
+        <div className="realm-deck__panel chrome shrink-0 px-3 py-2.5">
           {/* ONE compact voice bar. The in-call controls (mic, leave) live in the
               single global VoiceCallBar below, so this row never repeats a
               "Return to call" button or a second call bar. */}

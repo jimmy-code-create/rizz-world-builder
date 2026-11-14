@@ -5004,3 +5004,73 @@ body {
   border-right: 0;
   border-top: 0;
 }
+
+/* ============================================================================
+   REALM DECK — one layered top surface for the header and the channel rail
+   ========================================================================== */
+.realm-deck__bar {
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+/* The header is the deck's ceiling: it carries no edge of its own. */
+.realm-deck__bar--top {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+/* The rail closes the deck: one hairline, warmed with the lime brand colour. */
+.realm-deck__bar--bottom {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 20%, var(--glass-border));
+  box-shadow: 0 10px 24px -18px color-mix(in srgb, var(--primary) 60%, transparent);
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 12px;
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .realm-deck__bar {
+    background: var(--l2);
+  }
+}
+
+/* Search / levels / options: 40px squircles on the same surface as the deck. */
+.realm-deck__action {
+  height: 40px;
+  width: 40px;
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  background: var(--l2);
+  color: var(--foreground);
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 140ms linear,
+    border-color 140ms linear;
+}
+.realm-deck__action:hover {
+  background: var(--l3);
+}
+.realm-deck__action:active {
+  transform: scale(0.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  .realm-deck__action {
+    transition: background-color 140ms linear;
+  }
+}
+
+/* A panel that hangs under the deck (voice channel controls). */
+.realm-deck__panel {
+  background: color-mix(in srgb, var(--l1) 92%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.realm-chips::-webkit-scrollbar {
+  display: none;
+}
+.realm-chips {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}

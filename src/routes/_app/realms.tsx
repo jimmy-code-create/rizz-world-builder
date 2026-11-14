@@ -848,7 +848,7 @@ function RealmsPage() {
                 onClick={() => setJoinOpen(true)}
                 aria-label="Join a realm with an invite code"
                 title="Join with a code"
-                className="inline-flex h-11 items-center gap-1.5 rounded-[8px] border border-border px-3 text-[12px] font-semibold text-foreground transition-colors hover:border-white/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex h-11 items-center gap-1.5 rounded-[14px] border border-white/10 bg-surface-1 px-3.5 text-[12px] font-semibold text-foreground transition-[background-color,border-color,transform] duration-150 hover:border-white/25 hover:bg-surface-2 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <KeyRound className="h-3.5 w-3.5" />
                 Code
@@ -915,7 +915,7 @@ function RealmsPage() {
                   type="button"
                   aria-label="Create a new realm"
                   title="New realm"
-                  className="inline-flex h-11 items-center gap-1.5 rounded-[8px] bg-primary px-3 text-[12px] font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="inline-flex h-11 items-center gap-1.5 rounded-[14px] bg-primary px-3.5 text-[12px] font-bold text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Plus className="h-3.5 w-3.5 stroke-[2.8]" />
                   New
@@ -1061,7 +1061,7 @@ function RealmsPage() {
         <div
           role="tablist"
           aria-label="Realms view"
-          className="mt-7 flex items-center gap-6 border-b border-border"
+          className="mt-6 flex items-center gap-1 rounded-full border border-white/[0.07] bg-surface-1 p-1"
         >
           {[
             { key: "mine" as const, label: "My rooms" },
@@ -1076,8 +1076,10 @@ function RealmsPage() {
                 aria-selected={active}
                 onClick={() => setView(tab.key)}
                 className={cn(
-                  "relative -mb-px inline-flex min-h-11 items-baseline gap-1.5 pb-3 pt-2 text-[13.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  "relative inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active
+                    ? "bg-surface-3 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {tab.label}
@@ -1086,9 +1088,7 @@ function RealmsPage() {
                     {myRows.length}
                   </span>
                 ) : null}
-                {active ? (
-                  <span className="absolute inset-x-0 bottom-0 h-[2px] bg-primary" />
-                ) : null}
+
               </button>
             );
           })}
@@ -1097,7 +1097,7 @@ function RealmsPage() {
         {view === "mine" ? (
           <section aria-label="Your rooms">
             <h2 className="sr-only">Your rooms</h2>
-            <div className="mt-4 flex gap-5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {MY_SCOPES.map(({ key, label }) => {
                 const active = realmScope === key;
                 return (
@@ -1107,8 +1107,10 @@ function RealmsPage() {
                     onClick={() => setRealmScope(key)}
                     aria-pressed={active}
                     className={cn(
-                      "inline-flex min-h-10 shrink-0 items-center gap-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                      "inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[12px] font-semibold transition-colors duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active
+                        ? "border-primary/50 bg-primary/15 text-primary"
+                        : "border-white/10 bg-surface-1 text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {label}
@@ -1220,7 +1222,7 @@ function RealmsPage() {
               ) : null}
             </div>
 
-            <div className="mt-3 flex gap-4 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {DISCOVER_CATEGORIES.map(({ key, label }) => {
                 const active = category === key;
                 return (
@@ -1230,8 +1232,10 @@ function RealmsPage() {
                     onClick={() => setCategory(key)}
                     aria-pressed={active}
                     className={cn(
-                      "inline-flex min-h-10 shrink-0 items-center text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                      "inline-flex min-h-8 shrink-0 items-center rounded-full border px-3 text-[12px] font-semibold transition-colors duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active
+                        ? "border-primary/50 bg-primary/15 text-primary"
+                        : "border-white/10 bg-surface-1 text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {label}
