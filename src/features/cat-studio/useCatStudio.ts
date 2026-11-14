@@ -154,3 +154,33 @@ function safeParse(value: string): unknown {
     return null;
   }
 }
+
+/**
+ * The viewer's own saved cat, for the "send my cat" sticker in chat.
+ *
+ * Same tolerance as everywhere else: before the pending migration the columns
+ * do not exist, so this resolves to null instead of throwing.
+ */
+export function useMyCat() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["cat-studio", "mine", user?.id],
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("profiles")
+        .select("avatar_url, avatar_type, avatar_config")
+        .eq("id", user!.id)
+        .maybeSingle();
+      if (error || !data) return null;
+      const row = data as {
+        avatar_url?: string | null;
+        avatar_type?: string | null;
+        avatar_config?: unknown;
+      };
+      if (row.avatar_type !== "cat" || !row.avatar_url || !row.avatar_config) return null;
+      return { url: row.avatar_url, config: sanitizeCatConfig(row.avatar_config) };
+    },
+  });
+}

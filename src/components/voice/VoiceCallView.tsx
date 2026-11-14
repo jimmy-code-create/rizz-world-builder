@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CatAvatar } from "@/features/cat-studio/CatAvatar";
+import { sanitizeCatConfig } from "@/features/cat-studio/config";
 import { fetchCatAvatarConfigs } from "@/lib/voice";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { Button } from "@/components/ui/button";
@@ -452,6 +453,10 @@ export const VoiceCallView = memo(function VoiceCallView() {
     enabled: participants.length > 0,
   });
   const catConfigs = catConfigQuery.data ?? EMPTY_CAT_CONFIGS;
+  const catConfigFor = (userId: string) => {
+    const raw = catConfigs.get(userId);
+    return raw ? sanitizeCatConfig(raw) : null;
+  };
   const liveRoom = useLiveRoom();
   const isLive = call?.kind === "live";
   // The viewer stage needs the host's face and name, not just their id.
@@ -1187,9 +1192,19 @@ export const VoiceCallView = memo(function VoiceCallView() {
                           ) : (
                             <>
                               <div className="relative">
-                                {catConfigs.get(participant.user_id) ? (
+                                {catConfigFor(participant.user_id)?.flex !== "photo" &&
+                                  catConfigs.has(participant.user_id) && (
+                                    <span className="pointer-events-none absolute -right-2.5 -top-2.5 z-10 h-8 w-8 overflow-hidden rounded-full border border-primary/40 bg-[#0b0714]">
+                                      <CatAvatar
+                                        config={catConfigs.get(participant.user_id)}
+                                        animated={!reducedMotion}
+                                        className="h-full w-full"
+                                      />
+                                    </span>
+                                  )}
+                                {catConfigFor(participant.user_id)?.flex === "photo" ? (
                                   <CatAvatar
-                                    config={catConfigs.get(participant.user_id)}
+                                    config={catConfigFor(participant.user_id)}
                                     animated={!reducedMotion}
                                     className={`h-16 w-16 rounded-full transition-colors duration-200 ${
                                       speaking

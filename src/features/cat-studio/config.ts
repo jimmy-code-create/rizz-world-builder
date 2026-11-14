@@ -13,6 +13,14 @@ export type CatSlot = (typeof CAT_SLOTS)[number];
 export const PATTERNS = ["solid", "tuxedo", "tabby", "calico"] as const;
 export type CatPattern = (typeof PATTERNS)[number];
 
+/**
+ * Where the cat shows up. Instagram, WhatsApp and Snapchat all let an avatar sit
+ * beside your photo instead of replacing it, so "sticker" (photo stays, cat
+ * pinned to the corner) is the default and "photo" is the opt-in old behaviour.
+ */
+export const CAT_FLEX = ["sticker", "name", "photo"] as const;
+export type CatFlex = (typeof CAT_FLEX)[number];
+
 export const EXPRESSIONS = ["happy", "chill", "sleepy", "surprised", "smug"] as const;
 export type CatExpression = (typeof EXPRESSIONS)[number];
 
@@ -51,6 +59,7 @@ export type CatConfig = {
   pattern: CatPattern;
   slots: Record<CatSlot, string | null>;
   expression: CatExpression;
+  flex: CatFlex;
 };
 
 export const DEFAULT_SHAPE: CatShape = {
@@ -70,6 +79,7 @@ export const DEFAULT_CONFIG: CatConfig = {
   pattern: "solid",
   slots: { hat: null, eyewear: null, neck: null, face: null, back: null, backdrop: null },
   expression: "happy",
+  flex: "sticker",
 };
 
 /** Four breeds, each a full set of sliders plus the colours that sell it. */
@@ -174,6 +184,7 @@ export function sanitizeCatConfig(input: unknown): CatConfig {
     pattern: safeOneOf(raw.pattern, PATTERNS, DEFAULT_CONFIG.pattern),
     slots: safeSlots,
     expression: safeOneOf(raw.expression, EXPRESSIONS, DEFAULT_CONFIG.expression),
+    flex: safeOneOf(raw.flex, CAT_FLEX, DEFAULT_CONFIG.flex),
   };
 }
 
@@ -187,6 +198,7 @@ export function serializeCatConfig(config: CatConfig) {
     pattern: safe.pattern,
     slots: safe.slots,
     expression: safe.expression,
+    flex: safe.flex,
   };
 }
 

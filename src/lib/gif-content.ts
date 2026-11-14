@@ -1,5 +1,5 @@
 const MEDIA_MARKER_PATTERN =
-  /!\[(gif|sticker)\]\((https:\/\/(?:media\d*\.giphy\.com|i\.giphy\.com)\/[^)\s]+|\/stickers\/(?:noto|black-cat|kotya)\/[a-z0-9/_-]+\.(?:webm|png))\)/gi;
+  /!\[(gif|sticker)\]\((https:\/\/(?:media\d*\.giphy\.com|i\.giphy\.com)\/[^)\s]+|https:\/\/[^)\s]+\/storage\/v1\/object\/public\/avatars\/[^)\s]+\.png|\/stickers\/(?:noto|black-cat|kotya)\/[a-z0-9/_-]+\.(?:webm|png))\)/gi;
 
 /**
  * True when a message is nothing but a GIF or sticker marker.

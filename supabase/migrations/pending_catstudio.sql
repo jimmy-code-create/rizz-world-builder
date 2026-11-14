@@ -247,6 +247,13 @@ begin
     || jsonb_build_object('colors', coalesce(_config -> 'colors', '{}'::jsonb))
     || jsonb_build_object('pattern', coalesce(_config ->> 'pattern', 'solid'))
     || jsonb_build_object('expression', coalesce(_config ->> 'expression', 'happy'))
+    || jsonb_build_object(
+      'flex',
+      case
+        when _config ->> 'flex' in ('sticker', 'name', 'photo') then _config ->> 'flex'
+        else 'sticker'
+      end
+    )
     || jsonb_build_object('saved_at', now());
 
   update public.profiles

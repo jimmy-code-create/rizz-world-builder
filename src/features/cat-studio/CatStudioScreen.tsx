@@ -192,6 +192,32 @@ export function CatStudioScreen() {
           </div>
         </div>
 
+        <div className="mt-1.5 flex items-center justify-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">Wear it</span>
+          {(
+            [
+              ["sticker", "Sticker"],
+              ["name", "By name"],
+              ["photo", "Photo"],
+            ] as const
+          ).map(([option, label]) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => commit({ ...config, flex: option })}
+              aria-pressed={config.flex === option}
+              className={cn(
+                "h-8 rounded-full border px-2.5 text-[11.5px] font-semibold",
+                config.flex === option
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-white/12 text-muted-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="mt-1 flex items-center justify-center gap-2">
           <button
             type="button"
@@ -457,7 +483,8 @@ export function CatStudioScreen() {
           type="button"
           onClick={() => {
             setHistory((stack) => [...stack.slice(-9), config]);
-            setConfig(randomCatConfig((id) => studio.owned(id)));
+            // Randomize the cat, not how you wear it.
+            setConfig({ ...randomCatConfig((id) => studio.owned(id)), flex: config.flex });
             setTrying(null);
           }}
           className="flex h-11 items-center justify-center gap-1.5 rounded-[14px] border border-white/12 text-[12.5px] font-semibold"

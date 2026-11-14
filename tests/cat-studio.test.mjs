@@ -15,6 +15,7 @@ import {
 } from "../src/features/cat-studio/config.ts";
 import { CAT_ITEMS, ITEM_IDS_BY_SLOT, RARITY_LABEL } from "../src/features/cat-studio/catalog.ts";
 import { catLayerStack } from "../src/features/cat-studio/parts.ts";
+import { isOnlyMediaMarker, renderGifSegments } from "../src/lib/gif-content.ts";
 
 let checks = 0;
 const ok = (label, fn) => {
@@ -128,7 +129,7 @@ ok("renderer output is ours and contains no script or url", () => {
 
 ok("serialize drops anything the server should not see", () => {
   const payload = serializeCatConfig({ ...DEFAULT_CONFIG, extra: "nope", shape: { ...DEFAULT_CONFIG.shape, body: 99 } });
-  assert.deepEqual(Object.keys(payload).sort(), ["base", "colors", "expression", "pattern", "shape", "slots"]);
+  assert.deepEqual(Object.keys(payload).sort(), ["base", "colors", "expression", "flex", "pattern", "shape", "slots"]);
   assert.equal(payload.shape.body, SHAPE_RANGES.body[1]);
 });
 
@@ -140,6 +141,25 @@ ok("randomize only wears owned items", () => {
       if (id) assert.ok(owned.has(id), `${id} is not owned`);
     }
   }
+});
+
+ok("the cat sits on your photo unless you say otherwise", () => {
+  assert.equal(DEFAULT_CONFIG.flex, "sticker");
+  assert.equal(sanitizeCatConfig({}).flex, "sticker");
+  assert.equal(sanitizeCatConfig({ flex: "photo" }).flex, "photo");
+  assert.equal(sanitizeCatConfig({ flex: "name" }).flex, "name");
+  assert.equal(sanitizeCatConfig({ flex: "everywhere" }).flex, "sticker");
+});
+
+ok("a sent cat is media, not a message with a URL in it", () => {
+  const url = "https://example.supabase.co/storage/v1/object/public/avatars/abc/cat-1.png";
+  const marker = `![sticker](${url})`;
+  const segments = renderGifSegments(marker);
+  assert.equal(segments.length, 1);
+  assert.equal(segments[0].isSticker, true);
+  assert.equal(segments[0].value, url);
+  assert.equal(isOnlyMediaMarker(marker), true);
+  assert.equal(isOnlyMediaMarker(`look at my cat ${marker}`), false);
 });
 
 ok("breed presets are all valid configs", () => {
