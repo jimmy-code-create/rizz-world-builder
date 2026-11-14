@@ -5074,3 +5074,30 @@ body {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Demo live stage: a slow scan across the screen-share frame. Purely decorative,
+   one composited layer, and it stops under reduced motion. */
+.demo-scan {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--primary) 6%, transparent) 48%,
+    transparent 100%
+  );
+  background-size: 100% 42%;
+  background-repeat: no-repeat;
+  animation: demo-scan 7s linear infinite;
+}
+@keyframes demo-scan {
+  from {
+    background-position: 0 -60%;
+  }
+  to {
+    background-position: 0 160%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-scan {
+    animation: none;
+  }
+}
