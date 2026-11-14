@@ -472,11 +472,6 @@ export function AppShell() {
     (to !== "/feed" && path.startsWith(to + "/")) ||
     (to === "/realms" && path.startsWith("/r/"));
 
-  // Which of the five nav slots owns the sliding tile. The lime FAB sits in the
-  // third slot and is never a destination; "More" opens a sheet, so it never
-  // owns the tile either.
-  const activeNavSlot = isActive("/feed") ? 0 : isActive("/reels") ? 1 : isActive("/dms") ? 3 : -1;
-
   return (
     <div
       className={`shell-root relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
@@ -670,9 +665,7 @@ export function AppShell() {
             : isWidePage
               ? "mx-auto w-full max-w-7xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
               : "mx-auto w-full max-w-3xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
-        } ${isConversation ? "" : "shell-main--header"} ${
-          isConversation || isReels ? "" : "shell-main--nav"
-        }`}
+        } ${isConversation ? "" : "shell-main--header"}`}
       >
         <Outlet />
       </main>
@@ -692,20 +685,8 @@ export function AppShell() {
       {/* Mobile bottom nav — five slots, lime active tile, oversized create FAB.
           Matches the docked bar design: icon over label, one accent per row. */}
       {!isConversation && (
-        <nav aria-label="Primary" className="shell-nav glass-panel chrome md:hidden px-1.5 pt-1.5 pb-1.5">
-          <div className="relative mx-auto flex max-w-[560px] items-center justify-between gap-0.5">
-            {/* One tile for the whole bar: it slides to whichever slot is live,
-                so the active state moves instead of eight backgrounds blinking. */}
-            <span
-              aria-hidden="true"
-              className="shell-nav__indicator"
-              style={{
-                transform: `translateX(${Math.max(activeNavSlot, 0) * 100}%)`,
-                opacity: activeNavSlot < 0 ? 0 : 1,
-              }}
-            >
-              <span className="mx-auto mt-0.5 grid h-10 w-10 place-items-center rounded-xl bg-primary/15" />
-            </span>
+        <nav className="shell-nav md:hidden z-30 shrink-0 border-t border-white/[0.06] bg-background/95 backdrop-blur-xl px-1.5 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
+          <div className="mx-auto flex max-w-[560px] items-center justify-between gap-0.5">
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
               return (
@@ -721,7 +702,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="shell-nav__fab flex min-h-[48px] min-w-[40px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
+              className="flex min-h-[48px] min-w-[40px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
               aria-label="Create"
             >
               <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
@@ -1012,9 +993,11 @@ function NavBtn({
       to={to}
       className="flex min-h-[48px] flex-1 flex-col items-center justify-start gap-[2px] pt-0.5 focus-visible:outline-none"
     >
-      {/* The tile itself is the bar's sliding indicator; this span keeps its
-          exact size and radius so nothing about the item's shape moves. */}
-      <span className="grid h-10 w-10 place-items-center rounded-xl transition-colors">
+      <span
+        className={`grid h-10 w-10 place-items-center rounded-xl transition-colors ${
+          active ? "bg-primary/15" : ""
+        }`}
+      >
         <Icon
           className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
           strokeWidth={active ? 2.2 : 1.8}

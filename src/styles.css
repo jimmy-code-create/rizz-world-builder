@@ -4839,47 +4839,8 @@ body {
   .shell-main--header {
     padding-top: calc(var(--chrome-top) + 12px) !important;
   }
-  .shell-main--nav {
-    padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 20px) !important;
-  }
 }
 
-/* The nav's bottom edge sits on the safe area, not on the screen edge. */
-.shell-nav {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: var(--dock-bottom);
-  margin-inline: auto;
-  max-width: 560px;
-  border-radius: var(--r-md);
-  z-index: 40;
-}
-
-/* The active tile slides between slots instead of repainting per item. */
-.shell-nav__indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 20%;
-  height: 100%;
-  transition:
-    transform var(--dur-base) var(--ease-out),
-    opacity var(--dur-fast) linear;
-  will-change: transform;
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .shell-nav__indicator {
-    transition: opacity var(--dur-fast) linear;
-  }
-}
-
-/* The lime FAB is unchanged; it just sits a little proud of the glass. */
-.shell-nav__fab {
-  position: relative;
-  top: -12px;
-}
 
 /* The top bar is edge-to-edge: the glass carries the bottom edge only. */
 .shell-header {
