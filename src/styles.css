@@ -4887,3 +4887,159 @@ body {
   border-right: 0;
   border-top: 0;
 }
+
+/* ============================================================================
+   NATIVE SHELL · PHASE 3–6 — SURFACES THE SHELL TOKENS ALREADY EARNED
+   ----------------------------------------------------------------------------
+   `bg-surface-1/2/3` have been referenced across the app since before this
+   rebuild but no theme token backed them, so every one of those cards, tiles
+   and badge backgrounds rendered as nothing. They are now the same tonal
+   elevation the shell uses, derived from the canvas — no new brand colour.
+   ========================================================================== */
+
+@theme inline {
+  --color-surface-1: var(--l1);
+  --color-surface-2: var(--l2);
+  --color-surface-3: var(--l3);
+}
+
+/* A short landscape phone gets the app's own chrome, not the 256px desktop
+   sidebar eating a third of a 390px-tall screen. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 1023px) {
+  .shell-sidebar {
+    display: none !important;
+  }
+  .shell-root {
+    padding-left: 0 !important;
+  }
+  .shell-header {
+    display: flex !important;
+  }
+  .shell-nav {
+    display: block !important;
+  }
+}
+
+/* ---- Composer: one floating glass bar, not an opaque strip ---------------- */
+.composer-bar {
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .composer-bar {
+    background: var(--l3-solid);
+  }
+}
+
+/* ---- Sheets: glass, rounded, with a grabber ------------------------------ */
+[data-side="bottom"][role="dialog"] {
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  border-top: 1px solid var(--glass-border);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+}
+[data-side="bottom"][role="dialog"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  translate: -50% 0;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  [data-side="bottom"][role="dialog"] {
+    background: var(--l3-solid);
+  }
+}
+
+/* ---- Realm channel sub-bar: glass, and it gets out of the way ------------- */
+.realm-subbar {
+  border-top: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--l2) 78%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.realm-subbar[data-hidden="true"] {
+  transform: translateY(-100%);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .realm-subbar {
+    background: var(--l2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .realm-subbar {
+    transition: none;
+  }
+}
+
+/* ---- Settings: sticky rail, sticky action bar ---------------------------- */
+.settings-rail {
+  border-radius: var(--r-md);
+}
+.settings-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 12px -12px -12px;
+  padding: 12px;
+  padding-bottom: calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--l2) 88%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .settings-savebar {
+    background: var(--l2);
+  }
+}
+
+/* ---- Voice dock: floating glass, mute and leave at the ends -------------- */
+.voice-dock {
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  border-top: 1px solid var(--glass-border);
+}
+.voice-dock__scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+.voice-dock__scroll::-webkit-scrollbar {
+  display: none;
+}
+.voice-dock__scroll > * {
+  scroll-snap-align: center;
+}
+
+/* ---- Tonal cards: elevation instead of a hairline everywhere ------------- */
+.surface-card {
+  background: var(--l1);
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--foreground) 3%, transparent),
+    transparent 48%
+  );
+  border: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+  border-radius: var(--r-md);
+}
+
+/* Edge-to-edge glass bars inside a screen keep the bottom hairline only. */
+.glass-bar {
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}

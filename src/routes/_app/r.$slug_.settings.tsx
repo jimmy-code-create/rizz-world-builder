@@ -164,7 +164,7 @@ function RealmSettingsPage() {
           aria-label="Settings sections"
           className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:mb-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0 lg:pb-0"
         >
-          <div className="flex gap-2 lg:sticky lg:top-4 lg:flex-col">
+          <div className="settings-rail flex gap-2 lg:sticky lg:top-4 lg:flex-col">
             {visibleSections.map((entry) => {
               const Icon = entry.icon;
               const active = section === entry.key;
@@ -471,14 +471,16 @@ function OverviewSection({
             <Input value={accent} disabled={!canManage} onChange={(e) => setAccent(e.target.value)} className="glass border-white/10 font-mono" />
           </div>
         </Field>
-        <Button
-          type="button"
-          disabled={!canManage || busy}
-          onClick={() => void save()}
-          className="h-11 w-full border-0 bg-primary text-primary-foreground"
-        >
-          {busy ? "Saving…" : canManage ? "Save changes" : "Only the owner can edit this"}
-        </Button>
+        <div className="settings-savebar">
+          <Button
+            type="button"
+            disabled={!canManage || busy}
+            onClick={() => void save()}
+            className="h-11 w-full border-0 bg-primary text-primary-foreground"
+          >
+            {busy ? "Saving…" : canManage ? "Save changes" : "Only the owner can edit this"}
+          </Button>
+        </div>
       </div>
     </Panel>
   );

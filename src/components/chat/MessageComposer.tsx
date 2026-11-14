@@ -200,7 +200,7 @@ export function MessageComposer({
         // Solid, not blurred: one opaque bar is cheaper to composite on a phone
         // than a stack of translucent bars, and it cannot double up with a
         // screen's own wrapper.
-        "relative z-20 shrink-0 border-t border-[#1c1c1c] bg-[#0a0a0a] px-2.5 pt-1.5",
+        "composer-bar relative z-20 shrink-0 px-2.5 pt-1.5",
         "pb-[max(env(safe-area-inset-bottom,0px),0.375rem)]",
       )}
     >

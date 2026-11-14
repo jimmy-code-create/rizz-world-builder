@@ -1491,7 +1491,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
         {/* Music section: full now-playing + queue + transport live in the
             music sheet now; the tile above is just an icon entry point. */}
         <div
-          className="relative shrink-0 border-t border-white/5 glass-strong px-2 sm:px-4 pt-3"
+          className="voice-dock relative shrink-0 glass-strong px-2 sm:px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
         >
           {isLive && !liveRoom.isHost && !liveRoom.isOnStage ? (

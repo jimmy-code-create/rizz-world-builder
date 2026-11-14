@@ -365,6 +365,39 @@ function RealmPage() {
   const canModerate = canModerateRealm(myRole, realm.data?.owner_id, user?.id);
   const endRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
+  const subBarRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * The channel rail is the app's second piece of chrome, so it tucks away
+   * while the reader moves down the conversation and returns on the first
+   * upward move — the same rule the shell's top bar uses, so the two never
+   * fight each other.
+   */
+  const [subBarHidden, setSubBarHidden] = useState(false);
+  useEffect(() => {
+    const el = messageListRef.current;
+    if (!el) return;
+    setSubBarHidden(false);
+    let last = el.scrollTop;
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const next = el.scrollTop;
+        const delta = next - last;
+        last = next;
+        if (next < 24) setSubBarHidden(false);
+        else if (delta > 8) setSubBarHidden(true);
+        else if (delta < -8) setSubBarHidden(false);
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [activeRoomId, showVoiceChat]);
 
   useEffect(() => {
     if (realm.data && user) {
@@ -1068,7 +1101,7 @@ function RealmPage() {
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
-        className="chat-bar relative z-20 flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3"
+        className="glass-chrome glass-bar chrome relative z-20 flex shrink-0 items-center gap-3 px-4 pb-3"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)",
           boxShadow: `0 0 18px ${c.accent_color}14`,
@@ -1539,8 +1572,9 @@ function RealmPage() {
 
       {joined && rooms.data && rooms.data.length > 0 && (
         <div
-          className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-y border-sky-300/10 bg-sky-500/[0.025] px-3 py-2.5 no-scrollbar"
-          style={{ paddingTop: "calc(0.5rem + 0px)" }}
+          ref={subBarRef}
+          data-hidden={subBarHidden}
+          className="realm-subbar flex shrink-0 items-center gap-2 overflow-x-auto px-3 py-2 no-scrollbar"
         >
           {(rooms.data as RealmRoom[]).map((room) => {
             const RoomIcon =
@@ -1699,7 +1733,7 @@ function RealmPage() {
       )}
 
       {activeRoom?.kind === "voice" && (
-        <div className="chat-bar shrink-0 border-b border-white/5 px-4 py-3">
+        <div className="glass-chrome glass-bar chrome shrink-0 px-3 py-2.5">
           {/* ONE compact voice bar. The in-call controls (mic, leave) live in the
               single global VoiceCallBar below, so this row never repeats a
               "Return to call" button or a second call bar. */}
@@ -1852,27 +1886,10 @@ function RealmPage() {
               : "Voice channel is currently empty — jump in and start the vibe!"}
           </p>
 
+          {/* The one Join voice / Open call entry lives in the glass voice bar
+              above this stage; repeating it here gave the screen two identical
+              lime CTAs a few pixels apart. */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            {activeCall?.channelId === activeRoom.id ? (
-              <Button
-                size="lg"
-                onClick={() => openCallView()}
-                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
-              >
-                <Mic className="h-4 w-4" /> Open voice call
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                disabled={joiningVoice}
-                onClick={() =>
-                  joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })
-                }
-                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
-              >
-                <Mic className="h-4 w-4" /> {joiningVoice ? "Connecting…" : "Join voice"}
-              </Button>
-            )}
             <Button
               size="lg"
               variant="outline"

@@ -479,7 +479,7 @@ export function AppShell() {
 
   return (
     <div
-      className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
+      className={`shell-root relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
     >
       {!isConversation && (
         <Suspense fallback={null}>
@@ -489,7 +489,7 @@ export function AppShell() {
 
       {/* Desktop sidebar */}
       {!isConversation && (
-        <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-card/60 backdrop-blur-md border-r border-border px-4 py-6 z-30">
+        <aside className="shell-sidebar hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-card/60 backdrop-blur-md border-r border-border px-4 py-6 z-30">
           <Link
             to="/feed"
             className="flex items-center gap-2.5 mb-6 px-2 group"
