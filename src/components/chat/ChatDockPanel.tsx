@@ -660,7 +660,20 @@ const ChatDockPanelImpl = ({
                 </button>
               )}
             </div>
-          ) : tab === "stickers" || tab === "gifs" ? (
+          ) : tab === "stickers" ? (
+            <div className="chat-dock-chips shrink-0">
+              {STICKER_PACKS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setPack(item.id)}
+                  className={cn("chat-dock-chip", pack === item.id && "is-active")}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ) : tab === "gifs" ? (
             <div className="chat-dock-chips shrink-0">
               {CATEGORIES.map((item) => (
                 <button
@@ -693,7 +706,7 @@ const ChatDockPanelImpl = ({
       ) : (
         <>
           <div
-            className="min-h-0 flex-1"
+            className="relative min-h-0 flex-1 overflow-hidden"
             onTouchStart={(event) => {
               const touch = event.touches[0];
               tabSwipe.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
@@ -769,21 +782,15 @@ const ChatDockPanelImpl = ({
                   />
                 )
               ) : tab === "stickers" ? (
-                <>
-                  <div className="chat-dock-chips shrink-0 pb-1">
-                    {STICKER_PACKS.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setPack(item.id)}
-                        className={cn("chat-dock-chip", pack === item.id && "is-active")}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                  {gridFor(stickerCells)}
-                </>
+                stickerCells.length ? (
+                  gridFor(stickerCells)
+                ) : (
+                  <PanelEmpty
+                    icon={<StickerIcon className="h-5 w-5" />}
+                    title="No stickers in this pack"
+                    hint="Try another pack above."
+                  />
+                )
               ) : (
                 gridFor(
                   tab === "emoji" && emojiPack === "recent"
@@ -794,7 +801,7 @@ const ChatDockPanelImpl = ({
                 )
               ))}
           </div>
-          <div className="grid shrink-0 grid-cols-5 gap-0.5 border-t border-border px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-1">
+          <div className="relative z-10 grid shrink-0 grid-cols-5 gap-0.5 border-t border-border bg-background px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-1">
             {TABS.map((item) => {
               const Icon = item.icon;
               const active = tab === item.id;

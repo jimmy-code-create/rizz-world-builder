@@ -59,7 +59,7 @@ export function SwipeSheet({
             setDismissing(false);
             onOpenChange(false);
           }}
-          className="flex max-h-[86dvh] flex-col overflow-hidden rounded-t-[26px]"
+          className="flex max-h-[86dvh] flex-col overflow-hidden rounded-t-[26px] bg-[#0b0b0c]"
         >
           <div
             onPointerDown={(event) => {

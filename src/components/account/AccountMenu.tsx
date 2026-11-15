@@ -26,8 +26,7 @@ import { CloseButton } from "@/components/ui/close-button";
 // drawn Badges mark sits beside lucide icons in the same column.
 type MenuIcon = ComponentType<{ className?: string }>;
 import { ProfileCardDialog, formatCount } from "@/components/profile/ProfileCard";
-import { getBanner } from "@/lib/banner";
-import { CustomStatusLine, StatusIcon, AvatarStatusBadge } from "@/components/presence/StatusDot";
+import { CustomStatusLine, StatusIcon } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { PRESENCE_STATUSES, statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -151,13 +150,6 @@ export function AccountMenu({
     },
   });
   const stats = menuQuery.data;
-  const menuBanner = getBanner({
-    banner_url: stats?.bannerUrl,
-    banner_mode: stats?.bannerMode,
-    banner_gradient: stats?.bannerGradient,
-    updated_at: stats?.updatedAt,
-  });
-
   // Remember this account on the device (max 3) so switching is one tap.
   useEffect(() => {
     if (!userId || !username) return;
@@ -350,76 +342,30 @@ export function AccountMenu({
 
   const body = username ? (
     <div className={isMobile ? undefined : "grid grid-cols-2 gap-x-2"}>
-      {/* Header card: banner, avatar + dot, custom status, stats. Opens the profile card. */}
-      <button
-        type="button"
-        onClick={openCard}
-        aria-label={`Open your profile card, @${username}`}
-        className="col-span-2 block w-full overflow-hidden rounded-2xl border border-[#2a2a2e] bg-white/[0.03] text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
-      >
-        <span className="relative block h-28 w-full overflow-hidden md:h-40" aria-hidden>
-          <span
-            className="absolute inset-0"
-            style={{
-              background: menuBanner.background,
-            }}
-          />
-          {/* Same accent wash as the profile card, so the two surfaces match. */}
-          <span
-            className="absolute inset-0"
-            style={{ background: "radial-gradient(130% 100% at 12% 0%, rgba(200,255,61,0.20), transparent 62%)" }}
-          />
-          <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#141416] to-transparent" />
-        </span>
-        <span className="flex items-center gap-3 px-3">
-          <span className="relative -mt-6 inline-flex shrink-0">
-            <Avatar className="relative z-[1] h-12 w-12 rounded-full ring-2 ring-[#141416]">
-              <AvatarImage src={profile?.avatar_url ?? undefined} className="object-cover" />
-              <AvatarFallback className="rounded-full bg-[#1c1c1f] text-base font-bold text-[#f2efe6]">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
-            <AvatarStatusBadge emoji={custom?.emoji} size={14} />
-            <span className="absolute -bottom-0.5 -right-0.5 z-10 grid place-items-center rounded-full bg-[#141416] p-[2px]">
-              <StatusIcon status={selfPresence.status} size={16} />
-            </span>
-          </span>
-          <span className="min-w-0 flex-1 py-2">
-            <span className="block truncate text-sm font-bold text-[#f2efe6]">{displayName}</span>
-            <span className="block truncate text-xs text-muted-foreground">@{username}</span>
-            <CustomStatusLine status={custom} className="mt-0.5 text-xs text-muted-foreground" />
-          </span>
-        </span>
-        {/* Three labelled counts instead of one run-on line, so the numbers read
-            as a stat block and each one is skimmable. */}
-        <span className="flex items-stretch gap-2 border-t border-white/[0.06] px-3 py-2.5">
-          {menuQuery.isLoading ? (
-            <>
-              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
-              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
-              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
-              <span className="sr-only">Loading stats</span>
-            </>
-          ) : (
-            <>
-              <span className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="font-mono text-sm font-bold text-[#ff2d3f]">{formatCount(stats?.pawBalance ?? 0)}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paws</span>
-              </span>
-              <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
-              <span className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="font-mono text-sm font-bold text-[#f2efe6]">{formatCount(stats?.followers ?? 0)}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Followers</span>
-              </span>
-              <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
-              <span className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="font-mono text-sm font-bold text-[#f2efe6]">{formatCount(stats?.badges ?? 0)}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Badges</span>
-              </span>
-            </>
-          )}
-        </span>
-      </button>
+      {/* A row, not a second profile page. The sheet is for account actions;
+          the banner, counts and avatar card already live on the profile tab. */}
+      <div className="col-span-2 flex items-center gap-3 rounded-2xl border border-[#2a2a2e] bg-[#141416] p-3">
+        <UserAvatar
+          src={profile?.avatar_url}
+          fallback={initial}
+          size="md"
+          presence={custom?.emoji ? undefined : selfPresence.status}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-[#f2efe6]">{displayName}</p>
+          <p className="truncate text-xs text-muted-foreground">@{username}</p>
+        </div>
+        <Link
+          to="/u/$username"
+          params={{ username }}
+          onClick={() => setOpen(false)}
+          className="shrink-0 rounded-full border border-white/12 px-3 py-1.5 text-[12px] font-semibold text-[#f2efe6]"
+        >
+          View profile
+        </Link>
+      </div>
+
+      {sep}
 
       {/* Status submenu */}
       <div className={cn("mt-1", !isMobile && "col-span-2")}>

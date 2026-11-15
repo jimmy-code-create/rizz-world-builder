@@ -804,7 +804,7 @@ export function AppShell() {
           {/* What's happening */}
           <Link
             to="/pulse"
-            className="mt-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-primary/30 bg-primary/[0.07] p-3 transition-colors hover:bg-primary/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mt-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-primary/40 bg-[#15180f] p-3 transition-colors hover:bg-[#1b2012] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
               <Activity className="h-5 w-5" />
@@ -824,7 +824,7 @@ export function AppShell() {
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className="mt-3 flex items-center gap-3 p-3 rounded-2xl border border-border bg-card/60 hover:bg-card transition-colors min-h-[56px]"
+            className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-[#141416] p-3 transition-colors hover:bg-[#1c1c1f] min-h-[56px]"
           >
             <UserAvatar
               src={profile?.avatar_url}
@@ -847,7 +847,7 @@ export function AppShell() {
             <div className="mt-4 space-y-3">
               {pinnedDests.length > 0 && (
                 <section>
-                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
                     <Pin className="h-3 w-3" /> {t("pinned")}
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
@@ -859,7 +859,7 @@ export function AppShell() {
               )}
               {recentDests.filter((key) => !pinnedDests.includes(key)).length > 0 && (
                 <section>
-                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
                     <Clock className="h-3 w-3" /> {t("recent")}
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
@@ -877,7 +877,7 @@ export function AppShell() {
           {/* Grouped destinations */}
           {moreGroups.map((group) => (
             <section key={group.titleKey} className="mt-4">
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
                 {t(group.titleKey)}
               </h3>
               <div className="grid grid-cols-4 gap-2">

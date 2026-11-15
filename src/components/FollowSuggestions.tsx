@@ -117,7 +117,7 @@ export function FollowSuggestions() {
           <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c9ff3d]" />
           <h3
             id="suggested-for-you-heading"
-            className="truncate font-display text-[13px] font-bold tracking-[-0.01em] text-zinc-100"
+            className="truncate font-display text-[14px] font-extrabold tracking-[-0.01em] text-white"
           >
             {t("suggested_for_you")}
           </h3>
