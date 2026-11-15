@@ -69,7 +69,7 @@ export function SwipeSheet({
             role="presentation"
             className="flex shrink-0 cursor-grab touch-none justify-center pb-2 pt-2.5 active:cursor-grabbing"
           >
-            <span aria-hidden className="h-1 w-10 rounded-full bg-white/25" />
+            <span aria-hidden className="h-1 w-10 rounded-full bg-white/45" />
             <span className="sr-only">Drag down to close</span>
           </div>
           <div
