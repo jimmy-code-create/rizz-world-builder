@@ -10,13 +10,9 @@ import {
   type UIEvent,
 } from "react";
 import {
-  BarChart3,
-  Camera,
   Clock3,
-  FileText,
   Heart,
   Image as ImageIcon,
-  ImagePlus,
   Plus,
   Loader2,
   Search,
@@ -32,6 +28,8 @@ import { SMILEY_EMOJI, searchSmileys } from "@/lib/smiley-data";
 import { isSingleEmoji } from "@/lib/unicode-emoji";
 import { recordEmojiUse, toggleEmojiFavorite, useEmojiPreferences } from "@/lib/emoji-recents";
 import { usePurify } from "@/lib/purify";
+import { RizzLibrarySheet } from "@/components/chat/RizzLibrarySheet";
+import { useAuth } from "@/lib/auth";
 import { openPurifyPaywall } from "@/lib/purify-paywall";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import {
@@ -371,6 +369,7 @@ const ChatDockPanelImpl = ({
   scheduleDisabled,
 }: ChatDockPanelProps) => {
   const preferences = useEmojiPreferences();
+  const { user } = useAuth();
   // GIFs are the one Purify-gated surface in this panel: emoji and stickers stay
   // free, so a member without Purify loses nothing they already had.
   const { allowed } = usePurify();
@@ -679,89 +678,18 @@ const ChatDockPanelImpl = ({
       ) : null}
 
       {mode === "attach" ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-baseline justify-between px-3 pb-1.5 pt-2">
-            <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-              Recent
-            </p>
-            <p className="text-[11px] text-muted-foreground">Tap to attach</p>
-          </div>
-          {(
-            // The import door is always offered: a browser only gets photo access
-            // through this picker, so it cannot be buried behind an empty grid.
-            <button
-              type="button"
-              onClick={onPhotos}
-              disabled={disabled}
-              className="mx-2 mb-1 flex items-center gap-2 rounded-[12px] border border-primary/30 bg-primary/[0.07] px-3 py-2 text-left text-[12px] font-semibold text-primary disabled:opacity-40"
-            >
-              <ImagePlus className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {recentPhotos.length === 0 ? "Allow access to your photos" : "Import from your photos"}
-            </button>
-          )}
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
-            <div className="grid grid-cols-4 gap-1.5">
-              <button
-                type="button"
-                onClick={onCamera}
-                className="chat-dock-camera-tile"
-                disabled={disabled}
-                aria-label="Take a photo"
-              >
-                <Camera className="h-6 w-6" strokeWidth={1.7} />
-                <span>Camera</span>
-              </button>
-              {recentPhotos.map((photo) => (
-                <button
-                  key={photo.id}
-                  type="button"
-                  onClick={() => onPickRecentPhoto?.(photo.url)}
-                  className="chat-dock-recent-tile"
-                  aria-label="Send this photo again"
-                >
-                  <img src={photo.url} alt="" loading="lazy" decoding="async" />
-                </button>
-              ))}
-            </div>
-          </div>
-          <div
-            className="grid shrink-0 gap-1 px-2.5 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1"
-            style={{ gridTemplateColumns: `repeat(${onPoll ? 5 : 4}, minmax(0, 1fr))` }}
-          >
-            <AttachAction
-              icon={<ImagePlus className="h-5 w-5" />}
-              label="Photos"
-              onClick={onPhotos}
-              disabled={disabled}
-            />
-            <AttachAction
-              icon={<Camera className="h-5 w-5" />}
-              label="Camera"
-              onClick={onCamera}
-              disabled={disabled}
-            />
-            <AttachAction
-              icon={<FileText className="h-5 w-5" />}
-              label="Files"
-              onClick={onFiles}
-              disabled={disabled}
-            />
-            {onPoll ? (
-              <AttachAction
-                icon={<BarChart3 className="h-5 w-5" />}
-                label="Poll"
-                onClick={onPoll}
-                disabled={disabled}
-              />
-            ) : null}
-            <AttachAction
-              icon={<Clock3 className="h-5 w-5" />}
-              label="Schedule"
-              onClick={onSchedule}
-              disabled={disabled || scheduleDisabled || !onSchedule}
-            />
-          </div>
-        </div>
+        <RizzLibrarySheet
+          userId={user?.id ?? null}
+          recentPhotos={recentPhotos}
+          onPickPhoto={(url) => onPickRecentPhoto?.(url)}
+          onPhotos={onPhotos}
+          onCamera={onCamera}
+          onFiles={onFiles}
+          onPoll={onPoll}
+          onSchedule={onSchedule}
+          scheduleDisabled={scheduleDisabled}
+          disabled={disabled}
+        />
       ) : (
         <>
           <div
@@ -906,31 +834,6 @@ function DockCell({
   return <MediaButton cell={cell} onPick={onPick} onFavorite={onFavorite} />;
 }
 
-function AttachAction({
-  icon,
-  label,
-  onClick,
-  disabled,
-}: {
-  icon: ReactNode;
-  label: string;
-  onClick?: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled || !onClick}
-      className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-35"
-    >
-      <span className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-secondary text-foreground">
-        {icon}
-      </span>
-      {label}
-    </button>
-  );
-}
 
 function PanelEmpty({ icon, title, hint }: { icon: ReactNode; title: string; hint: string }) {
   return (

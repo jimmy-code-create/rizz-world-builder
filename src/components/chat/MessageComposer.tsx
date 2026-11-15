@@ -544,7 +544,14 @@ export function ChatComposer({
                 panel === "attach" && "border-primary/60 text-primary",
               )}
             >
-              <Plus className="h-[18px] w-[18px]" strokeWidth={2} strokeLinecap="round" />
+              <Plus
+                className={cn(
+                  "h-[18px] w-[18px] transition-transform duration-200 motion-reduce:transition-none",
+                  panel === "attach" && "rotate-45",
+                )}
+                strokeWidth={2}
+                strokeLinecap="round"
+              />
             </button>
           )}
 
