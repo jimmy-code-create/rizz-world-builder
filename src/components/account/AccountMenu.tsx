@@ -340,42 +340,44 @@ export function AccountMenu({
 
   const body = username ? (
     <div className={isMobile ? undefined : "grid grid-cols-2 gap-x-2"}>
-      {/* A compact cover, not a second profile page: the banner is the same
-          source as the profile tab, then one identity row and one door out. */}
-      <div className="col-span-2 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#141416]">
+      {/* The profile starts at the sheet's top edge: one hero cover using the
+          same banner source as the profile tab, with the identity row sitting
+          on its bottom scrim rather than on a solid band beneath it. */}
+      <div className="relative col-span-2 h-52 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#141416]">
         <div
           aria-hidden="true"
-          className="relative h-20 w-full"
+          className="absolute inset-0"
           style={{ background: accountCover }}
-        >
-          {/* The photo fades into the card so the avatar overlap and the name
-              below never sit on a hard edge. A gradient profile already has its
-              own wash, so this only adds the bottom lift. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(4,4,6,0.16) 0%, rgba(4,4,6,0) 38%, rgba(20,20,22,0.94) 100%)",
-            }}
-          />
-        </div>
-        <div className="relative flex items-center gap-3 px-3 pb-3 pt-2">
+        />
+        {/* The photo runs through the whole card. This lifts the bottom just
+            enough for the name and the pill; it never becomes a second panel. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(4,4,6,0.24) 0%, rgba(4,4,6,0) 32%, rgba(7,7,9,0.2) 58%, rgba(7,7,9,0.82) 100%)",
+          }}
+        />
+        <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-3">
           <UserAvatar
             src={profile?.avatar_url}
             fallback={initial}
             size="lg"
             presence={custom?.emoji ? undefined : selfPresence.status}
-            className="absolute -top-6 left-3 rounded-full ring-4 ring-[#141416]"
+            className="rounded-full ring-4 ring-black/50"
           />
-          <div className="min-w-0 flex-1 pl-[60px]">
-            <p className="truncate text-sm font-bold text-[#f2efe6]">{displayName}</p>
-            <p className="truncate text-xs text-muted-foreground">@{username}</p>
+          <div className="min-w-0 flex-1 pb-0.5">
+            <p className="truncate text-[15px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+              {displayName}
+            </p>
+            <p className="truncate text-xs text-white/65">@{username}</p>
           </div>
           <Link
             to="/u/$username"
             params={{ username }}
             onClick={() => setOpen(false)}
-            className="shrink-0 rounded-full border border-white/12 px-3 py-1.5 text-[12px] font-semibold text-[#f2efe6]"
+            className="shrink-0 rounded-full border border-white/20 bg-black/35 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/50"
           >
             View profile
           </Link>
@@ -654,6 +656,7 @@ export function AccountMenu({
             }}
             title="Your account"
             showClose
+            floatingHandle
             className="account-sheet max-h-[85dvh]"
             bodyClassName="px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >

@@ -267,6 +267,13 @@ await check("the account menu header wears the same banner as the profile", asyn
   assert.ok(accountMenu.includes("accountBanner.profileBackground"), "gradient covers keep the wash");
   assert.ok(accountMenu.includes("style={{ background: accountCover }}"), "the cover paints it");
   assert.ok(accountMenu.includes("banner_url: string | null"), "the shell profile carries the row");
+  assert.ok(accountMenu.includes("floatingHandle"), "the grab strip no longer pushes the cover down");
+  assert.match(accountMenu, /col-span-2 h-52 overflow-hidden rounded-2xl/, "the cover is a hero card");
+  assert.match(
+    accountMenu,
+    /absolute inset-x-0 bottom-0 flex items-end gap-3 p-3/,
+    "the identity sits on the cover, not in a separate band",
+  );
 });
 
 await check("the profile wash reaches both edges of the scroll pane", async () => {

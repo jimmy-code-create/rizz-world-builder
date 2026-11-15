@@ -27,6 +27,7 @@ export function SwipeSheet({
   className,
   bodyClassName,
   showClose = false,
+  floatingHandle = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -38,6 +39,9 @@ export function SwipeSheet({
   /** Draws an explicit X beside the grab handle; sheets with their own close
    *  button leave this off so the header never carries two of them. */
   showClose?: boolean;
+  /** Lays the grab strip over the content instead of above it, so a hero header
+   *  can begin at the sheet's top edge. The strip stays the drag surface. */
+  floatingHandle?: boolean;
 }) {
   const controls = useDragControls();
   const sheet = useAnimationControls();
@@ -101,17 +105,35 @@ export function SwipeSheet({
         >
           {/* The whole strip is the grab surface, not just the 40px pill: one
               thumb on the header always finds the drag. The X keeps its own
-              tap because the handler ignores buttons. */}
+              tap because the handler ignores buttons. With a hero header the
+              strip floats over the cover instead of taking a black row above
+              it, so the profile can start at the sheet's top edge. */}
           <div
             onPointerDown={(event) => {
               if ((event.target as HTMLElement).closest("button, a")) return;
               event.preventDefault();
               controls.start(event);
             }}
-            className="relative flex min-h-11 shrink-0 cursor-grab touch-none select-none items-center justify-center pb-1.5 active:cursor-grabbing"
+            className={cn(
+              "cursor-grab touch-none select-none active:cursor-grabbing",
+              floatingHandle
+                ? "absolute inset-x-0 top-0 z-30 flex h-11 items-center justify-center"
+                : "relative flex min-h-11 shrink-0 items-center justify-center pb-1.5",
+            )}
           >
-            <div className="flex w-24 justify-center">
-              <span aria-hidden className="h-1 w-10 rounded-full bg-white/45" />
+            <div
+              className={cn(
+                "flex w-24 justify-center",
+                floatingHandle && "rounded-full bg-black/35 px-2 py-1.5 backdrop-blur-sm",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "h-1 w-10 rounded-full",
+                  floatingHandle ? "bg-white/75 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" : "bg-white/45",
+                )}
+              />
               <span className="sr-only">Drag down to close</span>
             </div>
             {showClose ? (
@@ -119,7 +141,11 @@ export function SwipeSheet({
                 type="button"
                 onClick={() => changeOpen(false)}
                 aria-label="Close sheet"
-                className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                className={cn(
+                  "absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                  floatingHandle &&
+                    "bg-black/30 text-white/85 backdrop-blur-sm hover:bg-black/50",
+                )}
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

@@ -50,6 +50,12 @@ await check("phone sheet is black, desktop popout keeps Discord's colour", async
   );
   assert.ok(swipe.includes("dragElastic={0}"), "the card tracks the thumb 1:1");
   assert.ok(swipe.includes("bg-transparent"), "the Radix frame paints no strip behind the card");
+  assert.ok(swipe.includes("floatingHandle"), "a hero header can start at the sheet's edge");
+  assert.match(
+    swipe,
+    /floatingHandle\s*\?\s*"absolute inset-x-0 top-0 z-30/,
+    "the floating strip still owns the drag area",
+  );
   assert.match(menu, /PopoverContent[\s\S]*?bg-\[#111214\]/, "the desktop popover");
   assert.ok(menu.includes("rounded-lg border border-black/50"), "desktop popout chrome");
 });
