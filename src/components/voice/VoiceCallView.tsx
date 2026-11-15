@@ -601,7 +601,9 @@ export const VoiceCallView = memo(function VoiceCallView() {
   });
 
   const sendMut = useMutation({
-    mutationFn: () => sendRealmRoomMessage(call!.channelId, user!.id, chatBody.trim()),
+    // A sticker or GIF is sent immediately, so the body can be passed in.
+    mutationFn: (body?: string) =>
+      sendRealmRoomMessage(call!.channelId, user!.id, (body ?? chatBody).trim()),
     onSuccess: () => {
       setChatBody("");
       qc.invalidateQueries({ queryKey: ["realm-room-messages", call?.channelId] });
@@ -1757,7 +1759,6 @@ export const VoiceCallView = memo(function VoiceCallView() {
             {/* The one composer, same row as DMs and channels: attach, field,
                 stickers, mic/send. Slash commands ride above the field. */}
             <MessageComposer
-              chatType="voice"
               value={chatBody}
               onChange={(next) => {
                 setChatBody(next);
@@ -1765,6 +1766,11 @@ export const VoiceCallView = memo(function VoiceCallView() {
                 setChatSlashHidden(false);
               }}
               onSend={submitChat}
+              onPickEmoji={(token) => setChatBody((prev) => prev + token)}
+              onSendMarker={(marker) => {
+                if (!user || !call || sendMut.isPending) return;
+                sendMut.mutate(marker);
+              }}
               placeholder="Message voice chat… or / for commands"
               maxLength={500}
               canSend={Boolean(chatBody.trim())}

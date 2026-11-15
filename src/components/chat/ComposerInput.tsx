@@ -41,6 +41,7 @@ export type ComposerInputHandle = {
   insertText: (text: string) => void;
   clear: () => void;
   focus: () => void;
+  blur: () => void;
   /** The raw editable element, for surfaces that measure it. */
   element: () => HTMLDivElement | null;
   /** Caret offset in the token string, for the mention popup. */
@@ -465,6 +466,9 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
           } else {
             caretToEnd();
           }
+        },
+        blur: () => {
+          rootRef.current?.blur();
         },
         element: () => rootRef.current,
         getCaret: () => {

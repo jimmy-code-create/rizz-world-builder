@@ -143,6 +143,7 @@ export async function sendRealmMessage(
   body: string,
   attachmentUrl?: string | null,
   replyToId?: string | null,
+  card?: import("@/integrations/supabase/types").Database["public"]["Tables"]["messages"]["Insert"]["card"],
 ) {
   const { error } = await supabase
     .from("messages")
@@ -152,6 +153,7 @@ export async function sendRealmMessage(
       body,
       ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
       ...(replyToId ? { reply_to: replyToId } : {}),
+      ...(card ? { card } : {}),
     });
   if (error) throw error;
 }
@@ -406,6 +408,7 @@ export async function sendRealmRoomMessage(
   body: string,
   attachmentUrl?: string | null,
   replyToId?: string | null,
+  card?: import("@/integrations/supabase/types").Database["public"]["Tables"]["messages"]["Insert"]["card"],
 ) {
   const { data: room, error: roomError } = await supabase
     .from("realm_rooms")
@@ -423,6 +426,7 @@ export async function sendRealmRoomMessage(
       body,
       ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
       ...(replyToId ? { reply_to: replyToId } : {}),
+      ...(card ? { card } : {}),
     });
   if (error) throw error;
 }
