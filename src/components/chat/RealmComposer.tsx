@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import {
-  ChatComposer,
+  MessageComposer,
   type ComposerReply,
   type PendingComposerFile,
 } from "@/components/chat/MessageComposer";
@@ -349,7 +349,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
 
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <ChatComposer
+        <MessageComposer
           value={body}
           onChange={(next, nextCaret) => {
             setBody(next);

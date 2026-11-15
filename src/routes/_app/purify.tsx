@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -38,6 +38,7 @@ import {
 import { startPurifyCheckout } from "@/lib/purify-checkout";
 import { markPaywallSeen, openPurifyPaywall } from "@/lib/purify-paywall";
 import { PurifyShield } from "@/components/purify/PurifyShield";
+import { PurifyIntro, shouldAutoPlayPurifyIntro } from "@/components/purify/PurifyIntro";
 
 export const Route = createFileRoute("/_app/purify")({
   head: () => ({ meta: [{ title: "Purify · RIZZ" }] }),
@@ -94,6 +95,12 @@ function PurifyPage() {
   const [starting, setStarting] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [introOpen, setIntroOpen] = useState(false);
+
+  // Once per visit: the film is skipped for reduced motion and never repeats.
+  useEffect(() => {
+    if (shouldAutoPlayPurifyIntro()) setIntroOpen(true);
+  }, []);
 
   // `refreshProfile` updates context state; the restore answer is read from the
   // ref so it sees the refreshed row rather than the one this render started with.
@@ -120,6 +127,8 @@ function PurifyPage() {
     setStarting(true);
     setNotice(null);
     try {
+      // POST /api/purify/checkout mints the subscription session and answers
+      // with the Stripe URL; the shared helper is also used by the paywall.
       window.location.href = await startPurifyCheckout(session?.access_token);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Couldn't start checkout.";
@@ -161,6 +170,9 @@ function PurifyPage() {
     // `w-full` is load-bearing: without it this flex child sizes to the swipe
     // strip's max-content on a phone, and every card runs off the right edge.
     <div className="mx-auto w-full min-w-0 max-w-xl space-y-4 pb-10">
+      {introOpen && (
+        <PurifyIntro open onClose={() => setIntroOpen(false)} />
+      )}
       <Link
         to="/settings"
         className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

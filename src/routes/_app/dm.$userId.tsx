@@ -36,7 +36,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import { ChatComposer, type PendingComposerFile } from "@/components/chat/MessageComposer";
+import { MessageComposer, type PendingComposerFile } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { ChatPollCard } from "@/components/chat/PollCard";
@@ -2503,7 +2503,7 @@ function DMPage() {
           </button>
         )}
 
-        <ChatComposer
+        <MessageComposer
           value={body}
           onChange={(next, nextCaret) => {
             setBody(next);

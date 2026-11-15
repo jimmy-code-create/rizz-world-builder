@@ -564,7 +564,20 @@ export function GifPicker({
             swipeStart.current = null;
           }}
         >
-          {tab === "emoji" ? (
+{tab === "gifs" && (!allowed ? (
+            <div className="my-auto flex flex-col items-center justify-center rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center">
+              <Sparkles className="mb-2 h-7 w-7 text-primary" />
+              <p className="text-sm font-semibold text-foreground">GIFs come with Purify</p>
+              <p className="mt-1 text-xs text-muted-foreground">Unlock unlimited GIFs and premium perks</p>
+              <Link
+                to="/purify"
+                className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground"
+              >
+                Get Purify • {PURIFY_PRICE_LABEL}
+              </Link>
+            </div>
+          ) : null)}
+                    {tab === "emoji" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <RizzEmojiPanel
                 realmId={realmId}
@@ -578,27 +591,13 @@ export function GifPicker({
                 onScrollTopChange={handleEmojiScroll}
               />
             </div>
-          ) : tab === "gifs" ? (
+          ) : tab === "gifs" && allowed ? (
             <div
               ref={listScrollRef}
               className="rizz-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2"
               onScroll={handleListScroll}
             >
-              {!allowed ? (
-                <div className="my-auto flex flex-col items-center justify-center rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center">
-                  <Sparkles className="mb-2 h-7 w-7 text-primary" />
-                  <p className="text-sm font-semibold text-foreground">GIFs require Purify</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Unlock unlimited GIFs and premium perks
-                  </p>
-                  <Link
-                    to="/purify"
-                    className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground"
-                  >
-                    Get Purify • {PURIFY_PRICE_LABEL}
-                  </Link>
-                </div>
-              ) : !apiKey ? (
+              {!apiKey ? (
                 <div className="my-auto px-6 py-10 text-center text-sm text-muted-foreground">
                   GIF search isn't configured on this build.
                 </div>
