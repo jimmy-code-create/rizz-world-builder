@@ -62,6 +62,25 @@ const LOOT_TYPES = new Set([
   "super_reaction",
 ]);
 
+/**
+ * Bounty events all arrive with their own copy. Without this map the inbox fell
+ * back to the raw event name ("bounty_taken"), which told the reader nothing
+ * about what happened to their Paws.
+ */
+const BOUNTY_COPY: Record<string, string> = {
+  bounty_appeal_filed: "notif_bounty_appeal_filed",
+  bounty_auto_blocked: "notif_bounty_auto_blocked",
+  bounty_cancelled: "notif_bounty_cancelled",
+  bounty_deadline_missed: "notif_bounty_deadline_missed",
+  bounty_fee_charged: "notif_bounty_fee_charged",
+  bounty_paid: "notif_bounty_paid",
+  bounty_rejected: "notif_bounty_rejected",
+  bounty_released: "notif_bounty_released",
+  bounty_submitted: "notif_bounty_submitted",
+  bounty_taken: "notif_bounty_taken",
+  bounty_warned: "notif_bounty_warned",
+};
+
 function inTab(type: string, tab: HubTab): boolean {
   if (tab === "all") return true;
   if (tab === "interactions") return INTERACTION_TYPES.has(type);
@@ -304,8 +323,11 @@ function NotificationsPage() {
     const events = [...dmEvents, ...notificationEvents]
       .filter((event) => inTab(event.type, tab))
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    return aggregateNotifications(events);
-  }, [dmEvents, notificationEvents, tab]);
+    return aggregateNotifications(events, Date.now(), undefined).map((card) => {
+      const key = BOUNTY_COPY[card.type];
+      return key ? { ...card, summary: t(key) } : card;
+    });
+  }, [dmEvents, notificationEvents, tab, t]);
 
   const loading = items.isLoading || unreadDms.isLoading;
 

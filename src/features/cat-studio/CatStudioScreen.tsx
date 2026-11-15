@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { CatModel3D, type CatModelHandle } from "./CatModel3D";
 import { CAT_COLOURWAYS } from "./model";
 import {
-  BREED_PRESETS,
   DEFAULT_CONFIG,
   EXPRESSIONS,
   FUR_COLORS,
@@ -73,7 +72,6 @@ export function CatStudioScreen() {
   const [tab, setTab] = useState<TabId>("shape");
   const [trying, setTrying] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
-  const [view, setView] = useState<"3d" | "2d">("3d");
   const model = useRef<CatModelHandle>(null);
 
   // Pick the saved cat up once the profile is there (it arrives after mount).
@@ -385,6 +383,9 @@ export function CatStudioScreen() {
 
         {tab === "wear" && (
           <div className="space-y-5">
+            <p className="rounded-[12px] border border-white/10 bg-surface-2 px-3 py-2 text-[11.5px] leading-snug text-muted-foreground">
+              Items are kept with your cat, but the supplied model has no item sockets, so they are not drawn on it yet. Nothing is charged twice.
+            </p>
             {(["hat", "eyewear", "neck", "back"] as CatSlotId[]).map((slot) => (
               <div key={slot}>
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">

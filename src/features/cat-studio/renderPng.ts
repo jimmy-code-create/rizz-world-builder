@@ -1,13 +1,13 @@
 /**
  * Config -> SVG string -> 512 px PNG, in the browser.
  *
- * The string is built from the same layers the on-screen avatar draws, with the
- * CSS variables resolved to their literal colours first: canvas will not read
- * custom properties out of an <img>, and the regression would be a blank PNG.
+ * This survives only as the poster fallback: the cat on screen is the 3D model,
+ * and this flat render is used when a canvas capture is unavailable. The CSS
+ * variables are resolved to literal colours first, because canvas will not read
+ * custom properties out of an <img> and the regression would be a blank PNG.
  */
 import { sanitizeCatConfig, type CatConfig } from "./config";
-import { catLayerStack } from "./parts";
-import { furDark } from "./CatAvatar";
+import { catLayerStack, furDark } from "./parts";
 
 export function catSvgString(input: unknown, size = 512): string {
   const config = sanitizeCatConfig(input) as CatConfig;

@@ -45,6 +45,7 @@ import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/
 import { useKnockMood } from "@/lib/knock";
 import { KnockButton } from "@/components/knock/KnockControls";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { CatFlex } from "@/components/profile/CatFlex";
 import { ProfileEffectArt, isPageProfileEffect } from "@/components/effects/registry";
 import { useWornEffects } from "@/lib/effects";
 import { getBanner } from "@/lib/banner";
@@ -751,6 +752,11 @@ function ProfilePage() {
               { value: "main", label: "Main" },
               { value: "activity", label: "Activity" },
               { value: "paws", label: "Paws" },
+              // The cat is a Flex, never the profile picture: the tab only shows
+              // up for members who have one, plus their own empty state.
+              ...((profile as { avatar_type?: string | null }).avatar_type === "cat" || isMe
+                ? [{ value: "flexes", label: "Flexes" }]
+                : []),
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -1082,6 +1088,10 @@ function ProfilePage() {
               isMe={Boolean(isMe)}
               accent={accent}
             />
+          </TabsContent>
+
+          <TabsContent value="flexes" className="mt-4">
+            <CatFlex profile={profile as Record<string, unknown> & { username?: string | null }} isMe={Boolean(isMe)} />
           </TabsContent>
       </Tabs>
 

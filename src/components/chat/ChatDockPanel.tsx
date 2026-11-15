@@ -30,6 +30,8 @@ import { StickerMedia } from "@/components/chat/StickerMedia";
 import { SMILEY_EMOJI, searchSmileys } from "@/lib/smiley-data";
 import { isSingleEmoji } from "@/lib/unicode-emoji";
 import { recordEmojiUse, toggleEmojiFavorite, useEmojiPreferences } from "@/lib/emoji-recents";
+import { usePurify } from "@/lib/purify";
+import { openPurifyPaywall } from "@/lib/purify-paywall";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import {
   STICKER_PACKS,
@@ -368,6 +370,9 @@ const ChatDockPanelImpl = ({
   scheduleDisabled,
 }: ChatDockPanelProps) => {
   const preferences = useEmojiPreferences();
+  // GIFs are the one Purify-gated surface in this panel: emoji and stickers stay
+  // free, so a member without Purify loses nothing they already had.
+  const { allowed } = usePurify();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const term = deferredQuery.trim().toLowerCase();
@@ -698,28 +703,23 @@ const ChatDockPanelImpl = ({
       ) : (
         <>
           <div className="min-h-0 flex-1">
-            {tab === "recent" ? (
-              recentCells.length ? (
-                gridFor(recentCells)
-              ) : (
-                <PanelEmpty
-                  icon={<Clock3 className="h-5 w-5" />}
-                  title="Nothing recent yet"
-                  hint="Emoji and stickers you pick show up here."
-                />
-              )
-            ) : tab === "favorites" ? (
-              favoriteCells.length ? (
-                gridFor(favoriteCells)
-              ) : (
-                <PanelEmpty
-                  icon={<Heart className="h-5 w-5" />}
-                  title="No favorites yet"
-                  hint="Hold an emoji or sticker to save it."
-                />
-              )
-            ) : tab === "gifs" ? (
-              gifLoading ? (
+            {tab === "gifs" && (!allowed ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+                  <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+                  <p className="text-[13px] font-semibold text-foreground">GIFs come with Purify</p>
+                  <p className="text-[11.5px] leading-snug text-muted-foreground">
+                    Emoji and stickers are always free. Purify unlocks the GIF search and bigger
+                    uploads.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openPurifyPaywall("GIFs")}
+                    className="mt-1 h-11 rounded-full bg-primary px-4 text-[12.5px] font-bold text-primary-foreground"
+                  >
+                    See Purify
+                  </button>
+                </div>
+              ) : gifLoading ? (
                 <div className="grid h-full place-items-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin" />
                 </div>
@@ -737,26 +737,47 @@ const ChatDockPanelImpl = ({
                   title="No GIFs found"
                   hint="Try another search."
                 />
-              )
-            ) : tab === "stickers" ? (
-              <>
-                <div className="chat-dock-chips shrink-0 pb-1">
-                  {STICKER_PACKS.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setPack(item.id)}
-                      className={cn("chat-dock-chip", pack === item.id && "is-active")}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-                {gridFor(stickerCells)}
-              </>
-            ) : (
-              gridFor(emojiCells)
-            )}
+              ))}
+            {tab !== "gifs" &&
+              (tab === "recent" ? (
+                recentCells.length ? (
+                  gridFor(recentCells)
+                ) : (
+                  <PanelEmpty
+                    icon={<Clock3 className="h-5 w-5" />}
+                    title="Nothing recent yet"
+                    hint="Emoji and stickers you pick show up here."
+                  />
+                )
+              ) : tab === "favorites" ? (
+                favoriteCells.length ? (
+                  gridFor(favoriteCells)
+                ) : (
+                  <PanelEmpty
+                    icon={<Heart className="h-5 w-5" />}
+                    title="No favorites yet"
+                    hint="Hold an emoji or sticker to save it."
+                  />
+                )
+              ) : tab === "stickers" ? (
+                <>
+                  <div className="chat-dock-chips shrink-0 pb-1">
+                    {STICKER_PACKS.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setPack(item.id)}
+                        className={cn("chat-dock-chip", pack === item.id && "is-active")}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  {gridFor(stickerCells)}
+                </>
+              ) : (
+                gridFor(emojiCells)
+              ))}
           </div>
           <div className="grid shrink-0 grid-cols-5 gap-0.5 border-t border-border px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-1">
             {TABS.map((item) => {

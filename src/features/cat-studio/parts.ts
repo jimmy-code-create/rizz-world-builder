@@ -287,3 +287,12 @@ export function catLayerStack(input: unknown): { key: string; markup: string }[]
 
   return layers.filter((layer) => layer.markup.trim().length > 0);
 }
+
+/** The dark shade is derived from the fur colour, never a new brand colour. */
+export function furDark(fur: string): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(fur)?.[1] ?? "17171a";
+  const channels = [0, 2, 4].map((offset) =>
+    Math.round(parseInt(hex.slice(offset, offset + 2), 16) * 0.62),
+  );
+  return `#${channels.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
