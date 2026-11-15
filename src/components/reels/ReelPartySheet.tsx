@@ -85,7 +85,8 @@ export function ReelPartySheet({
       open={open}
       onOpenChange={onOpenChange}
       title="Reel party"
-      className="max-h-[88dvh] overflow-y-auto bg-[#0b0b0c] pb-[max(1rem,env(safe-area-inset-bottom))]"
+      className="max-h-[88dvh]"
+      bodyClassName="pb-[max(1rem,env(safe-area-inset-bottom))]"
     >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

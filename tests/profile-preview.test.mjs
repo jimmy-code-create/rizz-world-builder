@@ -222,6 +222,20 @@ await check("the cover carries an edge vignette so it stops reading as a flat pl
   assert.ok(profileHeader.includes('aspectRatio: "3 / 1"'), "the box height never moves");
 });
 
+await check("an empty cover invites its owner to add a banner", async () => {
+  assert.match(
+    profilePage,
+    /isMe && pageBanner\.mode === "none"/,
+    "only the owner with no image or gradient sees it",
+  );
+  assert.ok(profilePage.includes("Add banner"), "the profile itself carries the way in");
+  assert.match(
+    profilePage,
+    /search=\{\{ part: "banner" \}\}/,
+    "it opens the existing banner editor rather than a second upload flow",
+  );
+});
+
 await check("the profile wash reaches both edges of the scroll pane", async () => {
   assert.match(
     profilePage,

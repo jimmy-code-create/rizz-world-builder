@@ -43,6 +43,13 @@ await check("phone sheet is black, desktop popout keeps Discord's colour", async
   // Every action sheet is pure black now, not the Discord grey it used to be.
   assert.match(menu, /<SwipeSheet/, "the mobile sheet can be swiped away");
   assert.ok(swipe.includes("bg-black"), "the swipe sheet surface");
+  assert.match(swipe, /dragMomentum={false}/, "release inertia is off");
+  assert.ok(
+    !swipe.includes("dragConstraints={{ top: 0, bottom: 0 }}"),
+    "a zero constraint springs the sheet back instead of closing",
+  );
+  assert.ok(swipe.includes("dragElastic={0}"), "the card tracks the thumb 1:1");
+  assert.ok(swipe.includes("bg-transparent"), "the Radix frame paints no strip behind the card");
   assert.match(menu, /PopoverContent[\s\S]*?bg-\[#111214\]/, "the desktop popover");
   assert.ok(menu.includes("rounded-lg border border-black/50"), "desktop popout chrome");
 });

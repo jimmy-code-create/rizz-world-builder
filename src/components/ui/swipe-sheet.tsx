@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { motion, useDragControls } from "framer-motion";
+import { useEffect, type ReactNode } from "react";
+import { motion, useAnimationControls, useDragControls } from "framer-motion";
 import { X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -8,9 +8,16 @@ import { cn } from "@/lib/utils";
  * A bottom sheet you can throw away.
  *
  * Every action menu in the app should behave the same on a phone: grab the
- * handle, pull down, it leaves. Radix gives the sheet but no gesture, so the
- * handle owns a framer-motion drag and hands the sheet its final travel before
- * unmounting — no snap-back followed by a second close animation.
+ * header, pull down, it leaves. Radix gives the sheet but no gesture, so the
+ * header owns a framer-motion drag, then hands the close to Radix's exit
+ * animation from wherever the thumb left it — no snap-back followed by a
+ * second close animation.
+ *
+ * Two details keep the pull honest. The drag is 1:1 (a generous bottom bound,
+ * no elastic) so the sheet follows the thumb instead of fighting a 0px
+ * constraint that springs back to the top on release. And the Radix box paints
+ * nothing: the moving card owns the black surface, so pulling it down reveals
+ * the page behind rather than a static black strip above the header.
  */
 export function SwipeSheet({
   open,
@@ -33,15 +40,36 @@ export function SwipeSheet({
   showClose?: boolean;
 }) {
   const controls = useDragControls();
-  const [dismissing, setDismissing] = useState(false);
+  const sheet = useAnimationControls();
+
+  // A fresh open always starts at rest, even if the last close was a swipe.
+  useEffect(() => {
+    if (!open) return;
+    void sheet.start({ y: 0, transition: { duration: 0 } });
+  }, [open, sheet]);
+
+  const settle = () => {
+    void sheet.start({
+      y: 0,
+      transition: { type: "spring", stiffness: 520, damping: 42, mass: 0.7 },
+    });
+  };
+
+  /** Freeze the card where it is before Radix starts carrying it off screen. */
+  const changeOpen = (next: boolean) => {
+    if (!next) sheet.stop();
+    onOpenChange(next);
+  };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={changeOpen}>
       <SheetContent
         side="bottom"
         hideClose
         className={cn(
-          "swipe-sheet max-h-[86dvh] rounded-t-[26px] border-0 bg-black p-0",
+          // The portal box is a frame only: transparent, no border or shadow.
+          // styles.css makes this win over the generic bottom-sheet glass.
+          "swipe-sheet max-h-[86dvh] gap-0 overflow-visible border-0 bg-transparent p-0 shadow-none",
           className,
         )}
       >
@@ -52,36 +80,44 @@ export function SwipeSheet({
           drag="y"
           dragControls={controls}
           dragListener={false}
-          dragConstraints={{ top: 0, bottom: 0 }}
-          dragElastic={{ top: 0, bottom: 0.5 }}
+          dragMomentum={false}
+          // A large bottom bound lets the card track the finger 1:1. The old
+          // 0px constraint made framer start its own spring back to the origin
+          // on every release, which raced the close and caused the three-try
+          // dismissals. Zero elastic also means the sheet never drifts upward.
+          dragConstraints={{ top: 0, bottom: 1400 }}
+          dragElastic={0}
+          onDragStart={() => sheet.stop()}
           onDragEnd={(_, info) => {
-            if (info.offset.y > 90 || info.velocity.y > 650) setDismissing(true);
+            // Framer starts a zero-velocity inertia animation on release; stop
+            // it so it cannot fight the close or the spring back. A deliberate
+            // pull (64px at 1:1) or a quick flick closes, anything less settles.
+            sheet.stop();
+            if (info.offset.y > 64 || info.velocity.y > 480) changeOpen(false);
+            else settle();
           }}
-          animate={dismissing ? { y: 900 } : undefined}
-          transition={dismissing ? { duration: 0.18, ease: "easeIn" } : undefined}
-          onAnimationComplete={() => {
-            if (!dismissing) return;
-            setDismissing(false);
-            onOpenChange(false);
-          }}
-          className="flex max-h-[86dvh] flex-col overflow-hidden rounded-t-[26px] bg-black"
+          animate={sheet}
+          className="flex max-h-[inherit] flex-col overflow-hidden rounded-t-[26px] bg-black"
         >
-          <div className="relative flex shrink-0 items-center justify-center pb-2 pt-2.5">
-            <div
-              onPointerDown={(event) => {
-                event.preventDefault();
-                controls.start(event);
-              }}
-              role="presentation"
-              className="flex w-24 cursor-grab touch-none justify-center active:cursor-grabbing"
-            >
+          {/* The whole strip is the grab surface, not just the 40px pill: one
+              thumb on the header always finds the drag. The X keeps its own
+              tap because the handler ignores buttons. */}
+          <div
+            onPointerDown={(event) => {
+              if ((event.target as HTMLElement).closest("button, a")) return;
+              event.preventDefault();
+              controls.start(event);
+            }}
+            className="relative flex min-h-11 shrink-0 cursor-grab touch-none select-none items-center justify-center pb-1.5 active:cursor-grabbing"
+          >
+            <div className="flex w-24 justify-center">
               <span aria-hidden className="h-1 w-10 rounded-full bg-white/45" />
               <span className="sr-only">Drag down to close</span>
             </div>
             {showClose ? (
               <button
                 type="button"
-                onClick={() => onOpenChange(false)}
+                onClick={() => changeOpen(false)}
                 aria-label="Close sheet"
                 className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >

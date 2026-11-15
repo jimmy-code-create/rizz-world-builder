@@ -18,6 +18,7 @@ import {
   Film,
   Hash,
   Heart,
+  ImagePlus,
   MessageCircle,
   MoreHorizontal,
   PawPrint,
@@ -557,6 +558,19 @@ function ProfilePage() {
           }}
           status={presenceStatus}
           statusIsSelf={Boolean(isMe)}
+          overlayActions={
+            isMe && pageBanner.mode === "none" ? (
+              <Link
+                to="/settings/profile"
+                search={{ part: "banner" }}
+                aria-label="Add a banner to your profile"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 text-[12px] font-semibold text-white shadow-[0_8px_24px_-12px_rgba(0,0,0,0.8)] backdrop-blur-md transition-colors hover:border-white/25 hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              >
+                <ImagePlus className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                Add banner
+              </Link>
+            ) : undefined
+          }
           customStatus={customStatus}
           statusLine={
             <>
