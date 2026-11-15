@@ -48,7 +48,9 @@ await check("Follow is a solid lime control with the add-person glyph", () => {
   assert.ok(source.includes("<UserPlus"), "the row uses the reference's add-person icon");
   assert.ok(source.includes("bg-[#c9ff3d]"), "the control is filled lime");
   assert.ok(source.includes("text-[#0b0b0c]"), "ink sits on the lime, not white");
-  assert.ok(source.includes("h-11 min-w-[100px]"), "the control keeps a touch target and a fixed slot");
+  assert.ok(source.includes("h-8 min-w-[80px]"), "the control keeps a compact fixed slot");
+  assert.ok(source.includes("h-8 w-8 shrink-0"), "the avatar matches the reference's small circle");
+  assert.ok(source.includes("text-[13px] font-semibold"), "the name line stays compact");
 });
 
 await check("the follow mutation is untouched", () => {
