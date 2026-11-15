@@ -125,7 +125,8 @@ function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
   const { user, profile } = useAuth();
   const navigate = Route.useNavigate();
-  const { party: partyParam, compose, bulk } = Route.useSearch();
+  const { party: partyParam } = Route.useSearch();
+  const { compose, bulk } = Route.useSearch();
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
@@ -215,7 +216,7 @@ function ReelsPage() {
     activePost?.media_type === "video" && activePost.media_url
       ? parseExternalReelLink(activePost.media_url)
       : null;
-  const activeIsExternal = !!activeExternalLink?.ok;
+  const isExternal = !!activeExternalLink?.ok;
 
   const toggleReelPlayback = useCallback(() => {
     const video = activeVideo();
@@ -527,20 +528,20 @@ function ReelsPage() {
           </div>
 
           <div className="pointer-events-auto flex shrink-0 items-center gap-2">
-            <button
+            {/* A party guest never gets a pause control: the host owns playback. */}
+            {!isExternal && !partyControlled && <button
               type="button"
               onClick={toggleReelPlayback}
-              disabled={activeIsExternal || partyControlled}
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white transition-transform active:scale-95 disabled:opacity-40"
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white transition-transform active:scale-95"
               aria-label={reelPaused ? "Play reel" : "Pause reel"}
               aria-pressed={!reelPaused}
             >
               {reelPaused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
-            </button>
+            </button>}
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
-              disabled={activeIsExternal}
+              disabled={isExternal}
               className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white transition-transform active:scale-95 disabled:opacity-40"
               aria-label={muted ? "Unmute reel" : "Mute reel"}
             >
@@ -578,7 +579,7 @@ function ReelsPage() {
                       </span>
                     </button>
                   </section>
-                  {activeIsExternal ? (
+                  {isExternal ? (
                     <section className="border-t border-white/10 pt-3">
                       <button
                         type="button"
@@ -947,11 +948,8 @@ function ReelItem({
       };
     }
     if (partyControlled) {
-      // The party sync owns this player. Trying to autoplay here would fight
-      // the host's pause, so leave the decision to the incoming snapshot.
-      return () => {
-        cancelled = true;
-      };
+      // The host owns this player; autoplay here would fight its pause.
+      return () => { cancelled = true; };
     }
     if (autoplay) {
       video

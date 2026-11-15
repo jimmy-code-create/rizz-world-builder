@@ -506,12 +506,12 @@
   <!-- Purify: a faceted cleansing-water crystal caught in a violet orbit. -->
   <symbol id="purify" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bg-purify" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
+      <linearGradient id="bzg-purify" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
         <stop stop-color="#E9C8FF"/>
         <stop offset=".44" stop-color="#9140EA"/>
         <stop offset="1" stop-color="#2A0858"/>
       </linearGradient>
-      <linearGradient id="gl-purify" x1="0" y1="2.6" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+      <linearGradient id="bzg-purify-glow" x1="0" y1="2.6" x2="0" y2="12" gradientUnits="userSpaceOnUse">
         <stop stop-color="#fff" stop-opacity=".3"/>
         <stop offset="1" stop-color="#fff" stop-opacity="0"/>
       </linearGradient>
@@ -519,8 +519,8 @@
     </defs>
     <path d="M3.15 12c0-3.2 3.95-5.8 8.85-5.8s8.85 2.6 8.85 5.8-3.95 5.8-8.85 5.8S3.15 15.2 3.15 12Z" transform="rotate(-27 12 12)" fill="none" stroke="#B06CF5" stroke-opacity=".85" stroke-width="1.35"/>
     <path d="M12 2.9 18.25 8.2l-.95 6.3L12 21.1l-5.3-6.6-.95-6.3Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M12 2.9 18.25 8.2l-.95 6.3L12 21.1l-5.3-6.6-.95-6.3Z" fill="url(#bg-purify)" stroke="#EBD3FF" stroke-opacity=".85" stroke-width=".8" stroke-linejoin="round"/>
-    <g clip-path="url(#cp-purify)"><rect x="0" y="2.4" width="24" height="9" fill="url(#gl-purify)"/></g>
+    <path d="M12 2.9 18.25 8.2l-.95 6.3L12 21.1l-5.3-6.6-.95-6.3Z" fill="url(#bzg-purify)" stroke="#EBD3FF" stroke-opacity=".85" stroke-width=".8" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-purify)"><rect x="0" y="2.4" width="24" height="9" fill="url(#bzg-purify-glow)"/></g>
     <path d="m12 2.9 2.45 5.35L12 20.95 9.55 8.25Z" fill="#FBF3FF" fill-opacity=".34"/>
     <path d="m6.05 8.15 5.95.1 5.95-.1M6.7 14.45 12 12.9l5.3 1.55" fill="none" stroke="#3A0C74" stroke-opacity=".6" stroke-width=".8" stroke-linejoin="round"/>
     <path d="m8.05 8.15 3.95 4.75 3.95-4.75" fill="none" stroke="#FFF8FF" stroke-opacity=".88" stroke-width=".9" stroke-linecap="round" stroke-linejoin="round"/>
