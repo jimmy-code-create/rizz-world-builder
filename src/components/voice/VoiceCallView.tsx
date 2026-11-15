@@ -25,11 +25,8 @@ import {
   Headphones,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CatAvatar } from "@/features/cat-studio/CatAvatar";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
-import { sanitizeCatConfig } from "@/features/cat-studio/config";
-import { fetchCatAvatarConfigs } from "@/lib/voice";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -408,8 +405,6 @@ export function VoiceCallAudio() {
  * went through a render on every one of those ticks, which is what made taps on
  * the control bar feel late. Now only <SpeakingTiles> reacts to the audio.
  */
-const EMPTY_CAT_CONFIGS = new Map<string, unknown>();
-
 export const VoiceCallView = memo(function VoiceCallView() {
   const reducedMotion = useReducedMotion();
   const { user } = useAuth();
@@ -446,19 +441,6 @@ export const VoiceCallView = memo(function VoiceCallView() {
     retry,
   } = useVoiceCallContext();
 
-  // Cat Studio configs live in columns the generated types do not know about
-  // yet, so they are read separately and quietly: no rows, no cat.
-  const catConfigQuery = useQuery({
-    queryKey: ["cat-avatar-configs", participants.map((participant) => participant.user_id).join(",")],
-    queryFn: () => fetchCatAvatarConfigs(participants.map((participant) => participant.user_id)),
-    staleTime: 60_000,
-    enabled: participants.length > 0,
-  });
-  const catConfigs = catConfigQuery.data ?? EMPTY_CAT_CONFIGS;
-  const catConfigFor = (userId: string) => {
-    const raw = catConfigs.get(userId);
-    return raw ? sanitizeCatConfig(raw) : null;
-  };
   const liveRoom = useLiveRoom();
   const isLive = call?.kind === "live";
   // The viewer stage needs the host's face and name, not just their id.
@@ -1196,28 +1178,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
                           ) : (
                             <>
                               <div className="relative">
-                                {catConfigFor(participant.user_id)?.flex !== "photo" &&
-                                  catConfigs.has(participant.user_id) && (
-                                    <span className="pointer-events-none absolute -right-2.5 -top-2.5 z-10 h-8 w-8 overflow-hidden rounded-full border border-primary/40 bg-[#0b0714]">
-                                      <CatAvatar
-                                        config={catConfigs.get(participant.user_id)}
-                                        animated={!reducedMotion}
-                                        className="h-full w-full"
-                                      />
-                                    </span>
-                                  )}
-                                {catConfigFor(participant.user_id)?.flex === "photo" ? (
-                                  <CatAvatar
-                                    config={catConfigFor(participant.user_id)}
-                                    animated={!reducedMotion}
-                                    className={`h-16 w-16 rounded-full transition-colors duration-200 ${
-                                      speaking
-                                        ? "ring-2 ring-primary ring-offset-2 ring-offset-[#0b0714]"
-                                        : ""
-                                    }`}
-                                  />
-                                ) : (
-                                  <Avatar
+                                <Avatar
                                     className={`h-16 w-16 transition-colors duration-200 ${
                                       speaking
                                         ? "ring-2 ring-primary ring-offset-2 ring-offset-[#0b0714]"
@@ -1229,7 +1190,6 @@ export const VoiceCallView = memo(function VoiceCallView() {
                                       {initial}
                                     </AvatarFallback>
                                   </Avatar>
-                                )}
                                 <span className="absolute -bottom-1 -right-1 z-10 grid place-items-center rounded-full bg-[#0b0714] p-[2px]">
                                   <StatusDotButton
                                     userId={participant.user_id}

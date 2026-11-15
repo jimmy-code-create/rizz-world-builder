@@ -10,8 +10,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Check, Lock, PawPrint, RotateCcw, Shuffle, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CatAvatar } from "./CatAvatar";
 import { CatModel3D, type CatModelHandle } from "./CatModel3D";
+import { CAT_COLOURWAYS } from "./model";
 import {
   BREED_PRESETS,
   DEFAULT_CONFIG,
@@ -147,7 +147,7 @@ export function CatStudioScreen() {
         <button
           type="button"
           onClick={async () => {
-            const png = view === "3d" ? await model.current?.capturePng(512).catch(() => undefined) : undefined;
+            const png = (await model.current?.capturePng(512).catch(() => null)) ?? undefined;
             studio.save.mutate({ config, png });
           }}
           disabled={studio.save.isPending}
@@ -164,75 +164,32 @@ export function CatStudioScreen() {
         style={{ maxHeight: "40vh" }}
       >
         <div className="relative mx-auto h-[min(32vh,260px)] w-full max-w-[320px]">
-          {view === "3d" ? (
-            <CatModel3D config={previewConfig} handleRef={model} />
-          ) : (
-            <div className="grid h-full place-items-center">
-              <CatAvatar config={previewConfig} animated className="h-full w-auto" />
-            </div>
-          )}
-
-          <div className="absolute right-0 top-0 flex gap-1">
-            {(["3d", "2d"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setView(mode)}
-                aria-pressed={view === mode}
-                className={cn(
-                  "h-9 w-9 rounded-full border text-[11px] font-bold uppercase",
-                  view === mode
-                    ? "border-primary/50 bg-primary/15 text-primary"
-                    : "border-white/12 bg-background/70 text-muted-foreground",
-                )}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+          <CatModel3D colourway={config.colourway} handleRef={model} />
         </div>
-
-        <div className="mt-1.5 flex items-center justify-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Wear it</span>
-          {(
-            [
-              ["sticker", "Sticker"],
-              ["name", "By name"],
-              ["photo", "Photo"],
-            ] as const
-          ).map(([option, label]) => (
+        <div className="mt-1 flex items-center justify-center gap-1.5">
+          {CAT_COLOURWAYS.map((entry) => (
             <button
-              key={option}
+              key={entry.id}
               type="button"
-              onClick={() => commit({ ...config, flex: option })}
-              aria-pressed={config.flex === option}
+              onClick={() => commit({ ...config, colourway: entry.id })}
+              aria-pressed={config.colourway === entry.id}
               className={cn(
-                "h-8 rounded-full border px-2.5 text-[11.5px] font-semibold",
-                config.flex === option
+                "flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold",
+                config.colourway === entry.id
                   ? "border-primary/50 bg-primary/15 text-primary"
                   : "border-white/12 text-muted-foreground",
               )}
             >
-              {label}
+              <span
+                aria-hidden="true"
+                className="h-3 w-3 rounded-full border border-white/20"
+                style={{ background: entry.swatch }}
+              />
+              {entry.name}
             </button>
           ))}
         </div>
-
-        <div className="mt-1 flex items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const index = EXPRESSIONS.indexOf(previewConfig.expression);
-              commit({ ...config, expression: EXPRESSIONS[(index + 1) % EXPRESSIONS.length] });
-            }}
-            className="h-9 rounded-full border border-white/12 px-3 text-[11.5px] font-semibold capitalize text-muted-foreground"
-          >
-            Expression: {previewConfig.expression}
-          </button>
-          <span className="text-[11px] text-muted-foreground">
-            {view === "3d" ? "Drag to turn" : "Tap expression"}
-          </span>
-        </div>
+        <p className="mt-1 text-center text-[11px] text-muted-foreground">Drag to turn</p>
       </div>
 
       {/* Try-on / buy bar. */}
@@ -318,31 +275,6 @@ export function CatStudioScreen() {
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {tab === "shape" && (
           <div className="space-y-4">
-            <div>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                Breeds
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {BREED_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() =>
-                      commit({
-                        ...config,
-                        shape: clampShape(preset.config.shape),
-                        colors: { ...preset.config.colors },
-                        pattern: preset.config.pattern,
-                        expression: preset.config.expression,
-                      })
-                    }
-                    className="h-11 rounded-[14px] border border-white/12 bg-surface-1 px-3 text-[12.5px] font-semibold"
-                  >
-                    {preset.name}
-                  </button>
-                ))}
-              </div>
-            </div>
             {(Object.keys(SHAPE_RANGES) as ShapeKey[]).map((key) => {
               const [min, max] = SHAPE_RANGES[key];
               return (
@@ -600,10 +532,12 @@ function ItemGrid({
               item.rarity === "luxe" && "cat-luxe",
             )}
           >
-            <CatAvatar
-              config={{ ...config, slots: { hat: null, eyewear: null, neck: null, face: null, back: null, backdrop: null, [item.slot]: item.id } }}
-              size={44}
-              label=""
+            {/* The 3D model has no item sockets yet, so the tile shows the
+                colourway rather than a 2D drawing of a dressed cat. */}
+            <span
+              aria-hidden="true"
+              className="h-11 w-11 rounded-full border border-white/15"
+              style={{ background: CAT_COLOURWAYS.find((entry) => entry.id === config.colourway)?.swatch }}
             />
             <span className="line-clamp-1 text-[10.5px] font-semibold leading-tight">{item.name}</span>
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">

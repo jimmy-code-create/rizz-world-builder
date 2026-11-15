@@ -18,6 +18,9 @@ export type CatPattern = (typeof PATTERNS)[number];
  * beside your photo instead of replacing it, so "sticker" (photo stays, cat
  * pinned to the corner) is the default and "photo" is the opt-in old behaviour.
  */
+export const COLOURWAY_IDS = ["midnight", "frost", "marmalade"] as const;
+export type CatColourway = (typeof COLOURWAY_IDS)[number];
+
 export const CAT_FLEX = ["sticker", "name", "photo"] as const;
 export type CatFlex = (typeof CAT_FLEX)[number];
 
@@ -60,6 +63,8 @@ export type CatConfig = {
   slots: Record<CatSlot, string | null>;
   expression: CatExpression;
   flex: CatFlex;
+  /** Which of the model's three colourways the cat wears. */
+  colourway: CatColourway;
 };
 
 export const DEFAULT_SHAPE: CatShape = {
@@ -80,6 +85,7 @@ export const DEFAULT_CONFIG: CatConfig = {
   slots: { hat: null, eyewear: null, neck: null, face: null, back: null, backdrop: null },
   expression: "happy",
   flex: "sticker",
+  colourway: "midnight",
 };
 
 /** Four breeds, each a full set of sliders plus the colours that sell it. */
@@ -185,6 +191,7 @@ export function sanitizeCatConfig(input: unknown): CatConfig {
     slots: safeSlots,
     expression: safeOneOf(raw.expression, EXPRESSIONS, DEFAULT_CONFIG.expression),
     flex: safeOneOf(raw.flex, CAT_FLEX, DEFAULT_CONFIG.flex),
+    colourway: safeOneOf(raw.colourway, COLOURWAY_IDS, DEFAULT_CONFIG.colourway),
   };
 }
 
@@ -199,6 +206,7 @@ export function serializeCatConfig(config: CatConfig) {
     slots: safe.slots,
     expression: safe.expression,
     flex: safe.flex,
+    colourway: safe.colourway,
   };
 }
 

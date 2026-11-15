@@ -110,7 +110,9 @@ export function useCatStudio() {
       const { data: publicUrl } = supabase.storage.from("avatars").getPublicUrl(path);
       const { error: profileError } = await db
         .from("profiles")
-        .update({ avatar_url: publicUrl.publicUrl, avatar_type: "cat" })
+        // The poster is a Flex, not a profile picture: `avatar_url` belongs to
+        // the photo the person uploaded, and Cat Studio must never write it.
+        .update({ cat_poster_url: publicUrl.publicUrl })
         .eq("id", user.id);
       if (profileError) throw profileError;
 

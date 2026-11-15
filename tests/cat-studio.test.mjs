@@ -129,7 +129,7 @@ ok("renderer output is ours and contains no script or url", () => {
 
 ok("serialize drops anything the server should not see", () => {
   const payload = serializeCatConfig({ ...DEFAULT_CONFIG, extra: "nope", shape: { ...DEFAULT_CONFIG.shape, body: 99 } });
-  assert.deepEqual(Object.keys(payload).sort(), ["base", "colors", "expression", "flex", "pattern", "shape", "slots"]);
+  assert.deepEqual(Object.keys(payload).sort(), ["base", "colors", "colourway", "expression", "flex", "pattern", "shape", "slots"]);
   assert.equal(payload.shape.body, SHAPE_RANGES.body[1]);
 });
 
@@ -160,6 +160,13 @@ ok("a sent cat is media, not a message with a URL in it", () => {
   assert.equal(segments[0].value, url);
   assert.equal(isOnlyMediaMarker(marker), true);
   assert.equal(isOnlyMediaMarker(`look at my cat ${marker}`), false);
+});
+
+ok("the three colourways are the only ones a cat can wear", () => {
+  assert.equal(DEFAULT_CONFIG.colourway, "midnight");
+  assert.equal(sanitizeCatConfig({ colourway: "frost" }).colourway, "frost");
+  assert.equal(sanitizeCatConfig({ colourway: "marmalade" }).colourway, "marmalade");
+  assert.equal(sanitizeCatConfig({ colourway: "rainbow" }).colourway, "midnight");
 });
 
 ok("breed presets are all valid configs", () => {

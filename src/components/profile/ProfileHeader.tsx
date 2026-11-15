@@ -1,7 +1,5 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CatAvatar } from "@/features/cat-studio/CatAvatar";
-import { sanitizeCatConfig } from "@/features/cat-studio/config";
 import {
   AvatarDecorationArt,
   ProfileEffectArt,
@@ -20,8 +18,6 @@ export type ProfileHeaderUser = {
   username?: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;
-  /** A saved Cat Studio config: drawn live instead of the PNG. */
-  catConfig?: unknown;
   bannerUrl?: string | null;
   bannerMode?: string | null;
   bannerGradient?: unknown;
@@ -112,11 +108,11 @@ export function ProfileHeader({
   const username = user.username ?? "member";
   const displayName = user.displayName || user.username || "Member";
   const initial = displayName.charAt(0).toUpperCase();
-  const avatarSrc = user.avatarUrl ?? defaultAvatarFor(username);
-  // The saved cat, and how its owner chose to wear it: on the photo's corner
-  // (default), beside the name, or replacing the photo entirely.
-  const cat = user.catConfig ? sanitizeCatConfig(user.catConfig) : null;
-  const catFlex = cat?.flex ?? "sticker";
+  // The picture is always the person's own photo: a cat is a Flex on the profile
+  // tab, never the avatar. Cat Studio once wrote its poster into avatar_url, so
+  // those URLs count as "no photo" and the letter avatar shows instead.
+  const photoSrc = user.avatarUrl && !/\/cat-\d{10,}\.png$/.test(user.avatarUrl) ? user.avatarUrl : null;
+  const avatarSrc = photoSrc ?? defaultAvatarFor(username);
   const banner = getBanner(user);
   const headerSurface = surface ?? banner.surface;
   // A cut-out frame (Ivory Filigree) is drawn at 1.5× the avatar box, so 25%
@@ -238,52 +234,18 @@ export function ProfileHeader({
                 }}
               />
             )}
-            {cat && catFlex === "photo" ? (
-              <CatAvatar
-                config={cat}
-                animated={!user.reducedMotion}
-                className="relative z-[1] h-full w-full rounded-full"
-              />
-            ) : (
-              <Avatar className="relative z-[1] h-full w-full">
-                <AvatarImage src={avatarSrc} />
-                <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
-                  {initial}
-                </AvatarFallback>
-              </Avatar>
-            )}
+            <Avatar className="relative z-[1] h-full w-full">
+              <AvatarImage src={avatarSrc} />
+              <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
+                {initial}
+              </AvatarFallback>
+            </Avatar>
             {avatarRing && (
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 z-30 rounded-full"
                 style={{ boxShadow: `0 0 0 2px ${avatarRing}` }}
               />
-            )}
-            {/* The cat as a sticker: the photo stays, the avatar sits on its
-                corner the way a Meta or WhatsApp avatar does. */}
-            {cat && catFlex === "sticker" && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute z-40"
-                // Bottom-left, not bottom-right: the status dot already owns
-                // that corner and the two were sitting on top of each other.
-                style={{ width: "42%", height: "42%", left: "-6%", bottom: "-6%" }}
-              >
-                <span
-                  className="block h-full w-full overflow-hidden rounded-full p-[2px]"
-                  style={{
-                    background: "var(--header-bg)",
-                    boxShadow: "0 0 0 1.5px color-mix(in srgb, var(--brand-signal, #c9ff3d) 55%, transparent), 0 4px 10px rgba(0,0,0,0.45)",
-                    rotate: "-6deg",
-                  }}
-                >
-                  <CatAvatar
-                    config={cat}
-                    animated={!user.reducedMotion}
-                    className="h-full w-full rounded-full"
-                  />
-                </span>
-              </span>
             )}
             <AvatarStatusBadge emoji={customStatus?.emoji} />
             {statusEnabled && (
@@ -331,15 +293,6 @@ export function ProfileHeader({
                 <h1 className="min-w-0 truncate font-display text-[clamp(20px,5.4cqw,28px)] font-bold leading-tight tracking-tight text-[#f2efe6]">
                   <Nameplate name={displayName} className="block truncate" />
                 </h1>
-                {cat && catFlex === "name" && (
-                  <span
-                    aria-hidden
-                    className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full"
-                    style={{ boxShadow: "0 0 0 1.5px color-mix(in srgb, var(--brand-signal, #c9ff3d) 50%, transparent)" }}
-                  >
-                    <CatAvatar config={cat} animated={!user.reducedMotion} className="h-full w-full" />
-                  </span>
-                )}
                 {featuredBadge && (
                   <span className="flex shrink-0 items-center">{featuredBadge}</span>
                 )}
