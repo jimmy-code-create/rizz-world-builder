@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, Palette, Forward, CornerUpLeft } from "lucide-react";
-import { MessageComposer, type PendingComposerFile } from "@/components/chat/MessageComposer";
+import { ChatComposer, type PendingComposerFile } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { emojiToken } from "@/lib/emoji-shared";
@@ -943,7 +943,7 @@ function GroupRoom() {
 
       <div className="relative z-20 shrink-0">
         <div className="mx-auto w-full max-w-3xl">
-          <MessageComposer
+          <ChatComposer
             value={body}
             onChange={(next, nextCaret) => {
               setBody(next);
