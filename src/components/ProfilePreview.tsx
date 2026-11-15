@@ -153,26 +153,23 @@ export function ProfilePreviewTrigger({
   children: ReactNode;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   if (!username) return <>{children}</>;
+  // No preview sheet any more: one tap opens the real profile page, which is
+  // the only place with the cover, the paw ring and the full history.
   return (
-    <>
-      <button
-        type="button"
-        // Marks this subtree as already owning a preview, so a nested avatar
-        // never opens a second sheet over this one.
-        data-profile-preview-trigger=""
-        className={className ?? "text-left"}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setOpen(true);
-        }}
-      >
-        {children}
-      </button>
-      <ProfilePreviewDialog username={username} open={open} onOpenChange={setOpen} />
-    </>
+    <button
+      type="button"
+      data-profile-preview-trigger=""
+      className={className ?? "text-left"}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        navigate({ to: "/u/$username", params: { username } });
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

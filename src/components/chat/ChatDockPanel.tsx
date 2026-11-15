@@ -139,53 +139,73 @@ export function writeLastChatPickerTab(tab: ChatPickerTab) {
 function VirtualGrid<T>({
   items,
   columns,
-  rowHeight,
   renderCell,
+  initialTop = 0,
+  onScrollTop,
 }: {
   items: T[];
   columns: number;
-  rowHeight: number;
   renderCell: (item: T) => ReactNode;
+  /** Restores this tab's scroll position when it comes back. */
+  initialTop?: number;
+  onScrollTop?: (top: number) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef(0);
-  const [view, setView] = useState({ top: 0, height: 420 });
+  const [view, setView] = useState({ top: initialTop, height: 320, width: 0 });
   const rows = useMemo(() => chunk(items, columns), [items, columns]);
+
+  // Square cells: width decides the row height, so nothing is cut off and the
+  // gaps are the same in both directions.
+  const GAP = 8;
+  const PAD = 8;
+  const cell = view.width
+    ? Math.max(26, (view.width - PAD * 2 - GAP * (columns - 1)) / columns)
+    : 44;
+  const rowHeight = cell + GAP;
 
   const measure = useCallback(() => {
     const element = scrollRef.current;
     if (!element) return;
     setView((current) =>
-      current.top === element.scrollTop && current.height === element.clientHeight
+      current.top === element.scrollTop &&
+      current.height === element.clientHeight &&
+      current.width === element.clientWidth
         ? current
-        : { top: element.scrollTop, height: element.clientHeight || 420 },
+        : {
+            top: element.scrollTop,
+            height: element.clientHeight || 320,
+            width: element.clientWidth,
+          },
     );
   }, []);
 
   useEffect(() => {
-    measure();
     const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
+    if (!element) return;
+    if (initialTop > 0) element.scrollTop = initialTop;
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [measure, items.length, columns]);
+    // Only re-measure on layout changes, not on every scroll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [measure, columns, items.length]);
 
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget;
     if (frameRef.current) return;
     frameRef.current = requestAnimationFrame(() => {
       frameRef.current = 0;
-      setView({ top: element.scrollTop, height: element.clientHeight || 420 });
+      setView({ top: element.scrollTop, height: element.clientHeight || 320, width: element.clientWidth });
+      onScrollTop?.(element.scrollTop);
     });
   };
 
-  const overscan = rowHeight * 4;
+  const overscan = rowHeight * 3;
   const startRow = Math.max(0, Math.floor((view.top - overscan) / rowHeight));
-  const endRow = Math.min(
-    rows.length - 1,
-    Math.ceil((view.top + view.height + overscan) / rowHeight),
-  );
+  const endRow = Math.min(rows.length - 1, Math.ceil((view.top + view.height + overscan) / rowHeight));
 
   return (
     <div
@@ -193,21 +213,26 @@ function VirtualGrid<T>({
       onScroll={onScroll}
       className="chat-dock-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
     >
-      <div style={{ height: rows.length * rowHeight, position: "relative" }}>
-        {rows.slice(startRow, endRow + 1).map((row, rowOffset) => {
-          const rowIndex = startRow + rowOffset;
+      <div style={{ height: rows.length * rowHeight + PAD, position: "relative" }}>
+        {rows.slice(Math.max(0, startRow), endRow + 1).map((row, rowOffset) => {
+          const rowIndex = Math.max(0, startRow) + rowOffset;
           return (
             <div
               key={rowIndex}
-              className="absolute inset-x-0 grid gap-1 px-1"
+              className="absolute inset-x-0"
               style={{
                 top: rowIndex * rowHeight,
-                height: rowHeight,
+                height: cell,
+                paddingLeft: PAD,
+                paddingRight: PAD,
+                display: "grid",
+                gap: GAP,
                 gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                gridAutoRows: "100%",
               }}
             >
               {row.map((item, columnIndex) => (
-                <div key={rowIndex * columns + columnIndex} className="min-w-0">
+                <div key={rowIndex * columns + columnIndex} className="min-w-0 overflow-hidden">
                   {renderCell(item)}
                 </div>
               ))}
@@ -373,16 +398,27 @@ const ChatDockPanelImpl = ({
   // GIFs are the one Purify-gated surface in this panel: emoji and stickers stay
   // free, so a member without Purify loses nothing they already had.
   const { allowed } = usePurify();
-  const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
-  const term = deferredQuery.trim().toLowerCase();
+  // Search text is remembered per tab: switching shelves never clears it.
+  const [queries, setQueries] = useState<Record<string, string>>({});
+  const query = queries[tab] ?? "";
+  const setQuery = (value: string) =>
+    setQueries((current) => ({ ...current, [tab]: value }));
+  const [term, setTerm] = useState("");
+  useEffect(() => {
+    const id = window.setTimeout(() => setTerm(query.trim().toLowerCase()), 200);
+    return () => window.clearTimeout(id);
+  }, [query]);
   const [category, setCategory] = useState<Category | null>(null);
   // The emoji tab groups by emoji set (default, mine, each realm), never by
   // sticker feelings; those chips belong to GIFs and stickers only.
   const [emojiPack, setEmojiPack] = useState("default");
   // Horizontal swipe moves between the five tabs; the grids keep vertical scroll.
   const tabSwipe = useRef<{ x: number; y: number } | null>(null);
+  // Each shelf remembers where it was scrolled to.
+  const scrollMemory = useRef<Record<string, number>>({});
   const [pack, setPack] = useState<StickerPack>("noto");
+  // Each shelf remembers where it was scrolled to (stickers per pack).
+  const scrollKey = `${tab}:${tab === "stickers" ? pack : ""}`;
   const [panelRecents, setPanelRecents] = useState<string[]>([]);
   const [gifs, setGifs] = useState<GifResult[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
@@ -390,11 +426,7 @@ const ChatDockPanelImpl = ({
   const gifKey = import.meta.env.VITE_GIPHY_API_KEY?.trim();
 
   useEffect(() => setPanelRecents(readPanelRecents()), []);
-  useEffect(() => {
-    if (mode !== "picker") return;
-    setQuery("");
-    setCategory(null);
-  }, [mode, tab]);
+
 
   useEffect(() => {
     if (tab !== "stickers") return;
@@ -594,10 +626,13 @@ const ChatDockPanelImpl = ({
     cells.some((cell) => cell.kind === "emoji" || cell.kind === "realm");
   const gridFor = (cells: PanelCell[]) => (
     <VirtualGrid
-      key={`${tab}:${pack}:${term}:${category ?? "all"}`}
+      key={`${scrollKey}:${term}:${category ?? "all"}`}
       items={cells}
       columns={hasEmojiShape(cells) ? 8 : 4}
-      rowHeight={hasEmojiShape(cells) ? EMOJI_ROW_H : MEDIA_ROW_H}
+      initialTop={scrollMemory.current[scrollKey] ?? 0}
+      onScrollTop={(top) => {
+        scrollMemory.current[scrollKey] = top;
+      }}
       renderCell={(cell) => <DockCell cell={cell} onPick={pick} onFavorite={favorite} />}
     />
   );
@@ -801,7 +836,13 @@ const ChatDockPanelImpl = ({
                 )
               ))}
           </div>
-          <div className="relative z-10 grid shrink-0 grid-cols-5 gap-0.5 border-t border-border bg-background px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-1">
+          <div className="relative z-10 shrink-0 border-t border-border bg-[#141416] px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-1">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1 top-0 h-[2px] w-1/5 rounded-full bg-primary transition-transform duration-200 ease-out motion-reduce:transition-none"
+              style={{ transform: `translateX(${Math.max(0, TABS.findIndex((item) => item.id === tab)) * 100}%)` }}
+            />
+            <div className="grid grid-cols-5 gap-0.5">
             {TABS.map((item) => {
               const Icon = item.icon;
               const active = tab === item.id;
@@ -819,6 +860,7 @@ const ChatDockPanelImpl = ({
                 </button>
               );
             })}
+            </div>
           </div>
         </>
       )}

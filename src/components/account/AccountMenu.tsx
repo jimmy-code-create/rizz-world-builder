@@ -474,10 +474,9 @@ export function AccountMenu({
       <div className={cn("space-y-0.5", !isMobile && "col-start-1 row-start-3 self-start")}>
         {!isMobile && sectionLabel("Account")}
         {destRow("/u/$username", { username }, UserIcon, "View profile")}
-        {destRow("/settings/profile", undefined, Pencil, "Edit profile")}
-        {destRow("/bookmarks", undefined, Bookmark, "Saved", stats?.saved ?? 0, "posts")}
+        {/* Badges are worn by this account, so they belong to the account menu. */}
         {destRow("/badges", undefined, BadgesMark, "Badges", stats?.badges ?? 0, "badges")}
-        {destRow("/leaderboard", undefined, Trophy, "Leaderboard")}
+        {destRow("/settings/profile", undefined, Pencil, "Edit profile")}
       </div>
 
       {sep}

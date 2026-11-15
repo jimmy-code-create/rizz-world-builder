@@ -22,6 +22,13 @@ export function EmojiText({
   byShortcode?: Map<string, { id: string }>;
 }) {
   const segments = useMemo(() => splitEmojiText(text, byShortcode), [text, byShortcode]);
+  // A line made only of emoji is a reaction, not a sentence: it gets one larger
+  // size and no leading, so a single 🥲 is not a paragraph.
+  const emojiOnly = useMemo(() => {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.length > 24) return false;
+    return /^[\p{Extended_Pictographic}\u200d\ufe0f\s]+$/u.test(trimmed);
+  }, [text]);
   const ids = useMemo(
     () => segments.filter((segment) => segment.kind === "emoji").map((segment) => segment.id),
     [segments],
@@ -30,7 +37,7 @@ export function EmojiText({
   const map = useMemo(() => emojiMapOf(lookup.data), [lookup.data]);
 
   return (
-    <span className={cn("whitespace-pre-wrap break-words", className)}>
+    <span className={cn("whitespace-pre-wrap break-words", emojiOnly && "emoji-only-line", className)}>
       {segments.map((segment, index) =>
         segment.kind === "text" ? (
           <span key={`t-${index}`}>

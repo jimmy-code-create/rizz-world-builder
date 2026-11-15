@@ -3,7 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAvatarPalette } from "@/components/ui/avatar";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
-import { ArrowLeft, ArrowRight, Check, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ArrowLeft, ArrowRight, Check, Plus, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,8 @@ export function FollowSuggestions() {
   const qc = useQueryClient();
   const rail = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [followed, setFollowed] = useState<string[]>([]);
 
   const { data } = useQuery({
     queryKey: ["follow-suggestions", user?.id, profile?.interests.join(",")],
@@ -105,6 +108,8 @@ export function FollowSuggestions() {
   };
 
   if (!data || data.length === 0) return null;
+  const visible = data.filter((entry) => !dismissed.includes(entry.id));
+  if (visible.length === 0) return null;
 
   return (
     <section
@@ -154,7 +159,7 @@ export function FollowSuggestions() {
         aria-label={t("suggested_for_you")}
         className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-3.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {data.map((p) => {
+        {visible.map((p) => {
           const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
           const seed = p.username || p.display_name || p.id;
           const palette = getAvatarPalette(seed);
@@ -165,10 +170,18 @@ export function FollowSuggestions() {
               key={p.id}
               data-suggestion-card
               role="listitem"
-              className="flex w-[120px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-[10px] border border-white/[0.05] bg-white/[0.03] px-2 py-2.5"
+              className="relative flex w-[132px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-[16px] border-2 border-[#c9ff3d]/30 bg-[#141416] px-2 py-3"
             >
+              <button
+                type="button"
+                aria-label={`Dismiss @${p.username}`}
+                onClick={() => setDismissed((current) => [...current, p.id])}
+                className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
               <span
-                className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/10"
+                className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full ring-2 ring-[#c9ff3d]/25"
                 style={{ background: p.avatar_url ? "#141418" : palette.bg }}
                 aria-hidden={p.avatar_url ? undefined : true}
               >
@@ -191,7 +204,7 @@ export function FollowSuggestions() {
                 params={{ username: p.username ?? "" }}
                 className="w-full text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
               >
-                <p className="truncate font-display text-[12.5px] font-bold leading-tight text-zinc-100">
+                <p className="truncate font-display text-[13px] font-extrabold leading-tight text-white">
                   {p.display_name || p.username}
                 </p>
                 <p className="mt-0.5 truncate text-[10.5px] text-zinc-500">@{p.username}</p>
@@ -201,17 +214,25 @@ export function FollowSuggestions() {
               </p>
               <button
                 type="button"
-                onClick={() => followMut.mutate(p.id)}
-                disabled={followMut.isPending}
+                onClick={() => {
+                  setFollowed((current) => [...current, p.id]);
+                  followMut.mutate(p.id);
+                }}
+                disabled={followMut.isPending || followed.includes(p.id)}
                 aria-label={`Follow @${p.username}`}
-                className="mt-0.5 inline-flex h-9 w-full items-center justify-center gap-1 rounded-full bg-[#c9ff3d]/12 px-2 text-[11.5px] font-bold text-[#c9ff3d] transition-colors hover:bg-[#c9ff3d]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-40"
-              >
-                {following ? (
-                  <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />
-                ) : (
-                  <Plus className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />
+                className={cn(
+                  "mt-0.5 inline-flex h-11 w-full items-center justify-center gap-1 rounded-full px-2 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-100",
+                  followed.includes(p.id)
+                    ? "border border-[#c9ff3d]/45 bg-transparent text-[#c9ff3d]"
+                    : "bg-[#c9ff3d] text-[#0b0b0c]",
                 )}
-                {following ? "Following" : "Follow"}
+              >
+                {followed.includes(p.id) ? (
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                )}
+                {followed.includes(p.id) ? "Following" : "Follow"}
               </button>
             </article>
           );

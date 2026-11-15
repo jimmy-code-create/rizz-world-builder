@@ -5418,6 +5418,7 @@ body {
 
 .chat-dock-media img,
 .chat-dock-media video {
+  object-fit: contain;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -5616,15 +5617,34 @@ body {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
+.rizz-action-tile {
+  display: flex;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  background: #141416;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform 120ms ease;
+}
+
+.rizz-action-tile:active {
+  transform: scale(0.97);
+}
+
 .rizz-tile--action {
   grid-column: span 2;
   grid-template-rows: auto auto;
   gap: 4px;
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
   color: var(--primary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .rizz-tile__badge {
@@ -5681,4 +5701,58 @@ body {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--foreground);
+}
+
+/* ---- Mobile sheet motion: transform and opacity only --------------------- */
+[role="dialog"][data-state="open"][data-side="bottom"] {
+  animation: rizz-sheet-in 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes rizz-sheet-in {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The dim behind a sheet is solid ink, never a blur. */
+[data-radix-portal] > [data-state] {
+  backdrop-filter: none !important;
+}
+
+/* Emoji-only message line: ~40px, tight. */
+.emoji-only-line {
+  display: inline-block;
+  font-size: 40px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  vertical-align: middle;
+}
+
+/* One press language across the app. */
+.chat-dock-chip:active,
+.rizz-action-tile:active,
+.chat-dock-tab:active,
+.chat-composer-disc:active,
+.chat-composer-avatar:active {
+  transform: scale(0.97);
+  transition: transform 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-dock-chip:active,
+  .rizz-action-tile:active,
+  .chat-dock-tab:active,
+  .chat-composer-disc:active,
+  .chat-composer-avatar:active {
+    transform: none;
+  }
+}
+
+/* Cards 16px, chips 12px: the same border everywhere. */
+.rizz-tile,
+.rizz-action-tile {
+  border-radius: 12px;
 }

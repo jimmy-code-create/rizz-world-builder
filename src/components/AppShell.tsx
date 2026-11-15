@@ -857,20 +857,6 @@ export function AppShell() {
                   </div>
                 </section>
               )}
-              {recentDests.filter((key) => !pinnedDests.includes(key)).length > 0 && (
-                <section>
-                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
-                    <Clock className="h-3 w-3" /> {t("recent")}
-                  </h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {recentDests
-                      .filter((key) => !pinnedDests.includes(key))
-                      .map((key) => (
-                        <ShortcutChip key={key} destKey={key} />
-                      ))}
-                  </div>
-                </section>
-              )}
             </div>
           )}
 

@@ -213,18 +213,7 @@ export function ReelPartySheet({
           </div>
         ) : (
           <div className="mt-5">
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-primary/10 via-white/[0.03] to-transparent p-4">
-              <div className="flex items-center gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
-                  <MonitorPlay className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-white">Start the room</p>
-                  <p className="text-xs leading-snug text-muted-foreground">
-                    You control the feed. Everyone follows.
-                  </p>
-                </div>
-              </div>
+            <div className="rounded-2xl border border-white/10 bg-[#141416] p-4">
               <Button
                 type="button"
                 onClick={onStart}

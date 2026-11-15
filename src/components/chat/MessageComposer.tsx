@@ -620,8 +620,8 @@ export function ChatComposer({
                     onKeyDown?.(event);
                     if (event.defaultPrevented) return;
                   }}
-                  placeholder={disabled ? disabledHint : placeholder}
-                  ariaLabel={placeholder}
+                  placeholder={disabled ? disabledHint : placeholder?.trim() || "Message"}
+                  ariaLabel={placeholder?.trim() || "Message"}
                   maxLength={maxLength}
                   enterKeyHint="send"
                   className={disabled ? "text-muted-foreground" : "text-foreground"}

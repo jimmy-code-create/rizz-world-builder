@@ -7,7 +7,7 @@
  * preview, and the camera/upload tiles above the grid.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Check, Download, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
+import { Camera, Check, Download, FileUp, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import {
@@ -212,14 +212,14 @@ export function RizzLibrarySheet({
         />
       </button>
 
-      <div className="flex shrink-0 items-center gap-1 px-2.5 pb-1.5">
+      <div className="mx-2.5 mb-2 flex shrink-0 items-center rounded-full border border-white/10 bg-[#1c1c1f] p-1">
         {TABS.map((entry) => (
           <button
             key={entry.id}
             type="button"
             onClick={() => setTab(entry.id)}
             className={cn(
-              "h-8 rounded-full px-3 text-[12px] font-semibold transition-colors",
+              "h-9 flex-1 rounded-full text-[12px] font-bold transition-colors motion-reduce:transition-none",
               tab === entry.id
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -229,18 +229,12 @@ export function RizzLibrarySheet({
             {entry.label}
           </button>
         ))}
-        <span className="ml-auto text-[10.5px] tabular-nums text-muted-foreground">
-          {String(active.length).padStart(2, "0")}
-        </span>
       </div>
 
-      <div
-        className="rizz-library__grid min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2"
-        style={{ maxHeight: expanded ? "none" : undefined }}
-      >
+      <div className="mx-2.5 mb-2 grid shrink-0 grid-cols-3 gap-2">
         <button
           type="button"
-          className="rizz-tile rizz-tile--action"
+          className="rizz-action-tile"
           aria-label="Take a photo or video"
           onClick={onCamera}
           disabled={disabled}
@@ -250,14 +244,30 @@ export function RizzLibrarySheet({
         </button>
         <button
           type="button"
-          className="rizz-tile rizz-tile--action"
+          className="rizz-action-tile"
           aria-label="Upload from device"
           onClick={() => fileInput.current?.click()}
           disabled={disabled}
         >
-          <ImagePlus className="h-5 w-5" aria-hidden="true" />
+          <Upload className="h-5 w-5" aria-hidden="true" />
           <span>Upload</span>
         </button>
+        <button
+          type="button"
+          className="rizz-action-tile"
+          aria-label="Send a file"
+          onClick={onFiles}
+          disabled={disabled}
+        >
+          <FileUp className="h-5 w-5" aria-hidden="true" />
+          <span>Files</span>
+        </button>
+      </div>
+
+      <div
+        className="rizz-library__grid min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 pb-2"
+        style={{ maxHeight: expanded ? "none" : undefined }}
+      >
 
         {active.map((item) => {
           const index = selected.indexOf(item.url);
@@ -324,13 +334,12 @@ export function RizzLibrarySheet({
         </button>
       )}
 
-      <div className="flex shrink-0 items-center gap-1.5 border-t border-border px-2.5 py-1.5">
-        <ActionPill label="Photo" onClick={onPhotos} disabled={disabled} />
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-border px-2.5 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1.5">
+        <ActionPill label="Photos" onClick={onPhotos} disabled={disabled} />
         {onPoll && <ActionPill label="Poll" onClick={onPoll} disabled={disabled} />}
         {onSchedule && (
           <ActionPill label="Schedule" onClick={onSchedule} disabled={disabled || scheduleDisabled} />
         )}
-        <ActionPill label="Files" onClick={onFiles} disabled={disabled} />
         {selected.length > 0 && (
           <button
             type="button"
