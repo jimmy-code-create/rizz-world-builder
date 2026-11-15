@@ -37,6 +37,10 @@ const profileHeader = readFileSync(
   new URL("../src/components/profile/ProfileHeader.tsx", import.meta.url),
   "utf8",
 );
+const accountMenu = readFileSync(
+  new URL("../src/components/account/AccountMenu.tsx", import.meta.url),
+  "utf8",
+);
 
 await check("the bio renders markdown instead of raw asterisks", async () => {
   assert.ok(card.includes('from "@/components/MarkdownText"'));
@@ -80,7 +84,13 @@ await check("Discord anatomy: shared banner, avatar, presence dot, sections", as
   assert.ok(card.includes("Calendar"), "the member-since row carries a calendar icon");
   assert.ok(!card.includes('className="h-px bg-white'), "no divider eating header space");
   assert.ok(card.includes("profile-sheet"), "phones use the swipe-down sheet");
-  assert.ok(card.includes("dragTransition"), "the sheet springs back instead of snapping");
+  assert.ok(card.includes("useAnimationControls"), "the sheet owns one release animation");
+  assert.ok(card.includes("dragMomentum={false}"), "release inertia is off");
+  assert.ok(card.includes("dragElastic={0}"), "the card tracks the thumb 1:1");
+  assert.ok(
+    !card.includes("dragConstraints={{ top: 0, bottom: 0 }}"),
+    "a 0px origin cannot spring the release back before the close",
+  );
   assert.ok(card.includes("bg-[#111214]"), "the card uses Discord's popout colour");
 
   assert.ok(
@@ -163,8 +173,24 @@ await check("the sheet drags as one surface, so no bare theme strip can open up"
     dragged.includes("background: previewBanner.profileBackground"),
     "the theme tint travels with the card",
   );
-  assert.ok(card.includes("setDismissing(true)"), "a past-threshold swipe keeps moving instead of snapping back");
-  assert.ok(card.includes("onAnimationComplete"), "and closes once the card is off screen");
+  assert.ok(card.includes("closeSheet();"), "a past-threshold swipe keeps moving instead of snapping back");
+  assert.ok(card.includes("settleSheet();"), "a short pull settles from where it was released");
+  assert.ok(card.includes(".start({ y: 900"), "the card carries its own close travel");
+  assert.ok(
+    card.includes(".then(() => onOpenChange(false))"),
+    "the sheet unmounts only after the card is off screen",
+  );
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(
+    styles,
+    /\[data-side="bottom"\]\[role="dialog"\]\.profile-sheet\s*\{[\s\S]*?background:\s*transparent !important/,
+    "the Radix frame paints no black strip behind the dragged card",
+  );
+  assert.match(
+    styles,
+    /\[data-side="bottom"\]\[role="dialog"\]\.profile-sheet::before\s*\{\s*display:\s*none/,
+    "the generic grabber cannot double the floating pill",
+  );
 });
 
 await check("one sheet animation, and the panel does not re-scale on load", async () => {
@@ -234,6 +260,13 @@ await check("an empty cover invites its owner to add a banner", async () => {
     /search=\{\{ part: "banner" \}\}/,
     "it opens the existing banner editor rather than a second upload flow",
   );
+});
+
+await check("the account menu header wears the same banner as the profile", async () => {
+  assert.ok(accountMenu.includes("getBanner(profile)"), "the header uses the shared banner source");
+  assert.ok(accountMenu.includes("accountBanner.profileBackground"), "gradient covers keep the wash");
+  assert.ok(accountMenu.includes("style={{ background: accountCover }}"), "the cover paints it");
+  assert.ok(accountMenu.includes("banner_url: string | null"), "the shell profile carries the row");
 });
 
 await check("the profile wash reaches both edges of the scroll pane", async () => {

@@ -4936,6 +4936,21 @@ body {
   display: none;
 }
 
+/* The profile preview owns its card too. Without this override the generic
+   bottom sheet painted a static glass panel — plus its own grabber — behind
+   the dragged cover, which is the black strip that appeared on every pull. */
+[data-side="bottom"][role="dialog"].profile-sheet {
+  background: transparent !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+[data-side="bottom"][role="dialog"].profile-sheet::before {
+  display: none;
+}
+
 /* One motion for every swipe sheet: the Radix frame rises on open and carries
    the card the rest of the way down on close. Without this, the account sheet's
    own short fade would stop the card at the finger and fade it in place. */

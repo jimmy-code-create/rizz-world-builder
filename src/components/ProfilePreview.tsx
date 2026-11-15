@@ -1,4 +1,9 @@
-import { useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -41,7 +46,7 @@ import { useWornEffects } from "@/lib/effects";
 import { usePurify, withPurifyBadge } from "@/lib/purify";
 import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import { toast } from "@/lib/toast";
-import { motion, useDragControls } from "framer-motion";
+import { motion, useAnimationControls, useDragControls } from "framer-motion";
 
 type PreviewProfile = {
   id: string;
@@ -201,11 +206,18 @@ export function ProfilePreviewDialog({
 
   const isMobile = useIsMobile();
   const dragControls = useDragControls();
-  // A swipe past the threshold must not snap back to 0 and then play a second,
-  // unrelated close animation — the card keeps travelling from the finger's
-  // last position and only then unmounts.
-  const [dismissing, setDismissing] = useState(false);
+  // The card is one motion value: pulling it, settling after a short drag and
+  // carrying it off screen all start from where the thumb left it. The old 0px
+  // constraint sprung the release back to the origin first, which read as a
+  // snap-back and sometimes needed a second swipe.
+  const sheet = useAnimationControls();
   const purify = usePurify();
+
+  // A fresh open always starts at rest, even after the last close was a swipe.
+  useEffect(() => {
+    if (!open) return;
+    void sheet.start({ y: 0, opacity: 1, transition: { duration: 0 } });
+  }, [open, sheet]);
 
   const presence = usePresence(p?.id ?? "");
   const status = publicStatusOf(presence);
@@ -325,6 +337,25 @@ export function ProfilePreviewDialog({
     if (!isMobile) return;
     if ((event.target as HTMLElement).closest("button, a, [role='menuitem']")) return;
     dragControls.start(event);
+  };
+
+  // A release below the threshold returns the card to rest from its current
+  // position. Above it, the card keeps travelling the same direction and only
+  // then does the sheet unmount, so there is no spring-back followed by a
+  // second close animation.
+  const settleSheet = () => {
+    void sheet.start({
+      y: 0,
+      opacity: 1,
+      transition: { type: "spring", stiffness: 520, damping: 42, mass: 0.7 },
+    });
+  };
+
+  const closeSheet = () => {
+    sheet.stop();
+    void sheet
+      .start({ y: 900, opacity: 0, transition: { duration: 0.18, ease: "easeIn" } })
+      .then(() => onOpenChange(false));
   };
 
   const panel = (
@@ -635,22 +666,23 @@ export function ProfilePreviewDialog({
             drag="y"
             dragControls={dragControls}
             dragListener={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.55 }}
-            dragTransition={{ bounceStiffness: 520, bounceDamping: 38 }}
+            dragMomentum={false}
+            // A large bottom bound lets the card track the thumb 1:1; the old
+            // 0px box made every release spring back to the origin before the
+            // close ran. Zero elastic also stops the card drifting upward.
+            dragConstraints={{ top: 0, bottom: 1400 }}
+            dragElastic={0}
+            onDragStart={() => sheet.stop()}
             onDragEnd={(_, info) => {
-              // Either a deliberate pull or a flick closes the sheet. Handing
-              // the rest of the travel to the same motion value keeps the card
-              // moving one way, instead of spring-back then fade-out.
-              if (info.offset.y > 120 || info.velocity.y > 700) setDismissing(true);
+              // Framer starts a zero-velocity inertia animation on release;
+              // stop it so it cannot fight the close or the spring back. A
+              // deliberate pull or a quick flick clears the sheet; anything
+              // shorter settles back to rest.
+              sheet.stop();
+              if (info.offset.y > 64 || info.velocity.y > 480) closeSheet();
+              else settleSheet();
             }}
-            animate={dismissing ? { y: 900, opacity: 0 } : undefined}
-            transition={dismissing ? { duration: 0.18, ease: "easeIn" } : undefined}
-            onAnimationComplete={() => {
-              if (!dismissing) return;
-              setDismissing(false);
-              onOpenChange(false);
-            }}
+            animate={sheet}
             className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-[#0b0b0c] pb-[max(env(safe-area-inset-bottom),0.5rem)]"
             style={
               previewBanner?.profileBackground
@@ -663,7 +695,7 @@ export function ProfilePreviewDialog({
                 itself stays draggable. */}
             <div
               onPointerDown={beginSheetDrag}
-              className="absolute left-1/2 top-0 z-50 -translate-x-1/2 cursor-grab px-4 pb-4 pt-2 active:cursor-grabbing"
+              className="absolute left-1/2 top-0 z-50 -translate-x-1/2 cursor-grab touch-none select-none px-4 pb-4 pt-2 active:cursor-grabbing"
             >
               <span
                 className="flex h-4 w-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm"

@@ -8,6 +8,7 @@ import {
 import { BadgesMark } from "@/components/BadgesMark";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { getBanner } from "@/lib/banner";
 import { toast } from "@/lib/toast";
 import { UserAvatar } from "@/components/ui/avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,6 +37,10 @@ type ShellProfile = {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
+  banner_mode: string | null;
+  banner_gradient: unknown;
+  updated_at?: string | null;
 } | null;
 
 type SavedAccount = {
@@ -101,6 +106,13 @@ export function AccountMenu({
   const userId = user?.id ?? null;
   const username = profile?.username ?? null;
   const displayName = profile?.display_name || username || "Member";
+  // Same banner source as the profile tab, so the menu cover can never show a
+  // different photo or gradient than the page it opens.
+  const accountBanner = getBanner(profile);
+  const accountCover =
+    accountBanner.mode === "image"
+      ? accountBanner.background
+      : accountBanner.profileBackground ?? accountBanner.background;
 
   // Header stats + counts. Everything is best-effort: a missing table or a
   // denied read hides that chip instead of breaking the menu.
@@ -110,10 +122,6 @@ export function AccountMenu({
     staleTime: 60_000,
     queryFn: async () => {
       const fallback = {
-        bannerUrl: null as string | null,
-        bannerMode: null as string | null,
-        bannerGradient: null as unknown,
-        updatedAt: null as string | null,
         pawBalance: 0,
         followers: 0,
         saved: 0,
@@ -127,18 +135,8 @@ export function AccountMenu({
           supabase.from("bookmarks").select("id", { count: "exact", head: true }).eq("user_id", userId!),
           supabase.from("user_badges").select("badge_id", { count: "exact", head: true }).eq("user_id", userId!),
         ]);
-        const p = (prof.data ?? null) as {
-          banner_url: string | null;
-          banner_mode: string | null;
-          banner_gradient: unknown;
-          updated_at: string | null;
-          paw_balance: number | null;
-        } | null;
+        const p = (prof.data ?? null) as { paw_balance: number | null } | null;
         return {
-          bannerUrl: p?.banner_url ?? null,
-          bannerMode: p?.banner_mode ?? null,
-          bannerGradient: p?.banner_gradient ?? null,
-          updatedAt: p?.updated_at ?? null,
           pawBalance: Number(p?.paw_balance ?? 0),
           followers: followers.count ?? 0,
           saved: saved.count ?? 0,
@@ -342,27 +340,46 @@ export function AccountMenu({
 
   const body = username ? (
     <div className={isMobile ? undefined : "grid grid-cols-2 gap-x-2"}>
-      {/* A row, not a second profile page. The sheet is for account actions;
-          the banner, counts and avatar card already live on the profile tab. */}
-      <div className="col-span-2 flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-transparent p-3">
-        <UserAvatar
-          src={profile?.avatar_url}
-          fallback={initial}
-          size="md"
-          presence={custom?.emoji ? undefined : selfPresence.status}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-[#f2efe6]">{displayName}</p>
-          <p className="truncate text-xs text-muted-foreground">@{username}</p>
-        </div>
-        <Link
-          to="/u/$username"
-          params={{ username }}
-          onClick={() => setOpen(false)}
-          className="shrink-0 rounded-full border border-white/12 px-3 py-1.5 text-[12px] font-semibold text-[#f2efe6]"
+      {/* A compact cover, not a second profile page: the banner is the same
+          source as the profile tab, then one identity row and one door out. */}
+      <div className="col-span-2 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#141416]">
+        <div
+          aria-hidden="true"
+          className="relative h-20 w-full"
+          style={{ background: accountCover }}
         >
-          View profile
-        </Link>
+          {/* The photo fades into the card so the avatar overlap and the name
+              below never sit on a hard edge. A gradient profile already has its
+              own wash, so this only adds the bottom lift. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(4,4,6,0.16) 0%, rgba(4,4,6,0) 38%, rgba(20,20,22,0.94) 100%)",
+            }}
+          />
+        </div>
+        <div className="relative flex items-center gap-3 px-3 pb-3 pt-2">
+          <UserAvatar
+            src={profile?.avatar_url}
+            fallback={initial}
+            size="lg"
+            presence={custom?.emoji ? undefined : selfPresence.status}
+            className="absolute -top-6 left-3 rounded-full ring-4 ring-[#141416]"
+          />
+          <div className="min-w-0 flex-1 pl-[60px]">
+            <p className="truncate text-sm font-bold text-[#f2efe6]">{displayName}</p>
+            <p className="truncate text-xs text-muted-foreground">@{username}</p>
+          </div>
+          <Link
+            to="/u/$username"
+            params={{ username }}
+            onClick={() => setOpen(false)}
+            className="shrink-0 rounded-full border border-white/12 px-3 py-1.5 text-[12px] font-semibold text-[#f2efe6]"
+          >
+            View profile
+          </Link>
+        </div>
       </div>
 
       {sep}
