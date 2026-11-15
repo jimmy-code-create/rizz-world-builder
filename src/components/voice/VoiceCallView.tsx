@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CatAvatar } from "@/features/cat-studio/CatAvatar";
+import { MessageComposer } from "@/components/chat/MessageComposer";
+import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { sanitizeCatConfig } from "@/features/cat-studio/config";
 import { fetchCatAvatarConfigs } from "@/lib/voice";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
@@ -521,7 +523,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
   const [chatBody, setChatBody] = useState("");
   const [chatSlashIndex, setChatSlashIndex] = useState(0);
   const [chatSlashHidden, setChatSlashHidden] = useState(false);
-  const chatInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<ComposerInputHandle | null>(null);
   const peerAudio = usePeerAudio();
   const qc = useQueryClient();
   const presenceMap = usePresenceMap(participants.map((participant) => participant.user_id));
@@ -1752,17 +1754,25 @@ export const VoiceCallView = memo(function VoiceCallView() {
               })}
             </div>
 
-            <div className="p-3 border-t border-white/10 bg-black/20 shrink-0">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  submitChat();
-                }}
-                className="relative flex items-center gap-2"
-              >
-                {/* "/" opens the command list: invite the bots into this call
-                    or run MUSIC BOT straight from the chat. */}
-                {chatSlashOpen && (
+            {/* The one composer, same row as DMs and channels: attach, field,
+                stickers, mic/send. Slash commands ride above the field. */}
+            <MessageComposer
+              chatType="voice"
+              value={chatBody}
+              onChange={(next) => {
+                setChatBody(next);
+                setChatSlashIndex(0);
+                setChatSlashHidden(false);
+              }}
+              onSend={submitChat}
+              placeholder="Message voice chat… or / for commands"
+              maxLength={500}
+              canSend={Boolean(chatBody.trim())}
+              sending={sendMut.isPending}
+              allowVoice={false}
+              inputRef={chatInputRef}
+              overlay={
+                chatSlashOpen ? (
                   <div className="absolute inset-x-0 bottom-full z-[150] mb-2">
                     <SlashCommandMenu
                       commands={chatSlashMatches}
@@ -1777,50 +1787,29 @@ export const VoiceCallView = memo(function VoiceCallView() {
                       emptyHint="Try /music to bring MUSIC BOT in, or /game for GAME BOT."
                     />
                   </div>
-                )}
-                <input
-                  ref={chatInputRef}
-                  value={chatBody}
-                  onChange={(e) => {
-                    setChatBody(e.target.value);
+                ) : null
+              }
+              onKeyDown={(event) => {
+                if (!chatSlashOpen || chatSlashMatches.length === 0) return;
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setChatSlashIndex((current) => wrapIndex(current + 1, chatSlashMatches.length));
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setChatSlashIndex((current) => wrapIndex(current - 1, chatSlashMatches.length));
+                } else if (event.key === "Tab" || event.key === "Enter") {
+                  event.preventDefault();
+                  const picked = chatSlashMatches[chatSlashActive];
+                  if (picked) {
+                    setChatBody(insertSlashCommand(chatBody, picked.name));
+                    setChatSlashHidden(true);
                     setChatSlashIndex(0);
-                    setChatSlashHidden(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (!chatSlashOpen || chatSlashMatches.length === 0) return;
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setChatSlashIndex((current) => wrapIndex(current + 1, chatSlashMatches.length));
-                    } else if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setChatSlashIndex((current) => wrapIndex(current - 1, chatSlashMatches.length));
-                    } else if (e.key === "Tab" || e.key === "Enter") {
-                      e.preventDefault();
-                      const picked = chatSlashMatches[chatSlashActive];
-                      if (picked) {
-                        setChatBody(insertSlashCommand(chatBody, picked.name));
-                        setChatSlashHidden(true);
-                        setChatSlashIndex(0);
-                      }
-                    } else if (e.key === "Escape") {
-                      setChatSlashHidden(true);
-                    }
-                  }}
-                  placeholder="Message voice chat… or / for commands"
-                  maxLength={500}
-                  enterKeyHint="send"
-                  className="h-10 flex-1 rounded-full border border-white/10 bg-black/40 px-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={!chatBody.trim() || sendMut.isPending}
-                  className="h-10 w-10 shrink-0 rounded-full bg-primary text-primary-foreground"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
-            </div>
+                  }
+                } else if (event.key === "Escape") {
+                  setChatSlashHidden(true);
+                }
+              }}
+            />
           </SheetContent>
         </Sheet>
         </>

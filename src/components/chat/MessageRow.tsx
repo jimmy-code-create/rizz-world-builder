@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { memo, useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { CornerUpLeft, MoreHorizontal, SmilePlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,7 +56,7 @@ export type MessageRowProps = {
  * caller passes (quote, media, text, reactions, embeds): the row only owns the
  * spacing, the name colour and the long-press selection rules.
  */
-export function MessageRow({
+function MessageRowBase({
   id,
   author,
   time,
@@ -237,3 +237,10 @@ export function MessageRow({
     </SwipeableMessage>
   );
 }
+
+/**
+ * Memoized on purpose: the composer's draft lives one level up, so a keystroke
+ * re-renders the screen. With this wrapper the rows bail out on equal props, and
+ * typing costs nothing in the message list.
+ */
+export const MessageRow = memo(MessageRowBase);

@@ -1,23 +1,41 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { ArrowUp, Cat, Mic, Smile, X } from "lucide-react";
+/**
+ * The composer — the one message row, used by DMs, group chats, realm channels
+ * and the voice-chat text chat.
+ *
+ * Layout is fixed on purpose, so the four places cannot drift:
+ *
+ *   [ Attach 44 ] [ field: emoji 36 · input · grows to 5 lines ] [ Sticker 44 ] [ Mic/ Send 44 ]
+ *
+ * 8px gaps, 8px 12px padding plus the safe-area inset, everything bottom-aligned
+ * so a five-line message rises upward instead of pushing the buttons around.
+ *
+ * What the row owns:
+ *  - the panel state machine (`panels.ts`): keyboard, attach, emoji, stickers —
+ *    one at a time, the OS keyboard hidden while one is up, and the panel area
+ *    sized to the last keyboard height so the row does not jump;
+ *  - drafts (`drafts.ts`) when a `draftId` is given;
+ *  - the mic → send swap, the slow-mode countdown, and the read-only reason;
+ *  - voice notes: hold to record, slide left to cancel, slide up to lock.
+ *
+ * What it does not own: sending, uploading and the panels' contents. Screens
+ * pass `renderPanel` and get a panel slot back, which is how the same row serves
+ * a DM, a channel with emoji and a call with slash commands.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { ArrowUp, Mic, Smile, Sticker, Keyboard, Lock, Square, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ComposerInput, type ComposerInputHandle } from "@/components/chat/ComposerInput";
 import type { EmojiTokenParts } from "@/lib/emoji-token";
+import {
+  backShouldClosePanel,
+  emojiTriggerShowsKeyboard,
+  nextPanel,
+  panelHeight,
+  type ComposerPanel,
+  type ComposerSheetPanel,
+} from "@/features/composer/panels";
+import { clearDraft, queueDraft, readDraft } from "@/features/composer/drafts";
 
-/**
- * The chat composer, in one row.
- *
- * DM and group chat share this component so the two can never drift: a 40px
- * attach disc, a 40px-tall pill holding the emoji trigger, the textarea and
- * the cat trigger, and a 40px lime action disc that is a mic when the box is
- * empty and an arrow when there is something to send. The row owns its own
- * solid bar so screens never stack a second `chat-bar` behind it.
- *
- * Everything the composer needs to know about the world arrives as props, which
- * is why the pickers, the attach sheet and the mention popup stay owned by the
- * screen: the composer only draws the row and owns the input's own state
- * (height, focus ring, the mic slide).
- */
 export type ComposerReply = {
   mode?: "reply" | "edit";
   /** "Replying to Mina" / "Editing message". */
@@ -28,15 +46,39 @@ export type ComposerReply = {
   onJump?: () => void;
 };
 
-/** Five text lines, then the textarea scrolls instead of growing. */
+export type ComposerChatType = "dm" | "group" | "realm" | "voice";
+
+/** Five text lines, then the field scrolls instead of growing. */
 const MAX_INPUT_HEIGHT = 112;
 const SLIDE_CANCEL_PX = 70;
+const SLIDE_LOCK_PX = 60;
+/** Tapping the field keeps the keyboard up; the row never collapses under it. */
+const CONTROL = 44;
 
 function vibrate(ms: number) {
   if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
   navigator.vibrate(ms);
 }
 
+/** The last real keyboard height, so a panel can stand in exactly its place. */
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(300);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    let last = 0;
+    const onResize = () => {
+      const shrink = Math.round(window.innerHeight - viewport.height);
+      if (shrink > 120) last = shrink;
+      if (last) setHeight(Math.min(Math.max(last, 280), Math.round(window.innerHeight * 0.5)));
+    };
+    viewport.addEventListener("resize", onResize);
+    return () => viewport.removeEventListener("resize", onResize);
+  }, []);
+  return height;
+}
+
+/** Phones keep Enter as a newline; this is only for the mount default. */
 export function MessageComposer({
   value,
   onChange,
@@ -44,6 +86,7 @@ export function MessageComposer({
   onEmoji,
   onStickers,
   attach,
+  onAttach,
   above,
   mentions,
   overlay,
@@ -61,9 +104,8 @@ export function MessageComposer({
   onRecordEnd,
   onRecordCancel,
   canRecord = true,
-  /** Whether there is something to send (text *or* an attachment). */
+  recordDenied = false,
   canSend,
-  /** Groups have no voice notes yet: the action stays a send arrow. */
   allowVoice = true,
   onKeyUp,
   onKeyDown,
@@ -72,71 +114,129 @@ export function MessageComposer({
   onPasteFiles,
   onFocus,
   onBlur,
+  chatType = "dm",
+  draftId,
+  slowModeSeconds,
+  renderPanel,
+  onPanelChange,
 }: {
   value: string;
-  /** The caret is passed along, because the mention popup keys off it. */
   onChange: (next: string, caret: number) => void;
   onSend: () => void;
-  onEmoji: () => void;
-  onStickers: () => void;
-  /** The screen's own ChatAttachButton, already styled as a 44px circle. */
-  attach: ReactNode;
-  /** A photo preview, an upload progress strip: anything above the row. */
+  onEmoji?: () => void;
+  onStickers?: () => void;
+  /** A screen-owned attach disc. Replaced by the built-in one when omitted. */
+  attach?: ReactNode;
+  onAttach?: () => void;
   above?: ReactNode;
-  /** The mention popup, rendered inside the pill's positioning context. */
   mentions?: ReactNode;
-  /** Anything else that anchors above the field, e.g. the realm slash menu. */
   overlay?: ReactNode;
   reply?: ComposerReply | null;
   disabled?: boolean;
-  /** Why the composer is closed: shown in place of the placeholder. */
+  /** Why the composer is closed, e.g. "Only owner and mods can send here". */
   disabledHint?: string;
   placeholder?: string;
   maxLength?: number;
-  /**
-   * The field itself. It is a contenteditable div (see ComposerInput) so a
-   * custom emoji can be drawn inline instead of pasting its token as text.
-   */
   inputRef?: RefObject<ComposerInputHandle | null>;
-  /**
-   * Draws an emoji `data-token` as a picture. The screen owns this because it
-   * may know about a just-uploaded emoji the shared list has not seen yet.
-   */
   resolveEmoji?: (parts: EmojiTokenParts) => string | null;
   sending?: boolean;
   recording?: boolean;
   recordMs?: number;
   onRecordStart?: () => void;
-  /** Released without sliding: send the clip. */
   onRecordEnd?: () => void;
-  /** Slid past the cancel threshold: throw the clip away. */
   onRecordCancel?: () => void;
   canRecord?: boolean;
+  /** The mic was refused: shown as a note inside the row. */
+  recordDenied?: boolean;
   canSend?: boolean;
   allowVoice?: boolean;
   onKeyUp?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
-  /** Runs before the composer's own Enter-to-send, for slash menus and the like. */
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
   onTextareaClick?: () => void;
-  /** Image paste, kept exactly as it was (the screen uploads the file). */
   onPaste?: (event: React.ClipboardEvent<Element>) => void;
   onPasteFiles?: (files: File[]) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  /** Which context this row is in: affects labels only, never layout. */
+  chatType?: ComposerChatType;
+  /** Enables drafts: one per conversation, restored on open, cleared on send. */
+  draftId?: string;
+  /** Seconds left in slow mode, if any. */
+  slowModeSeconds?: number;
+  /**
+   * Panel slot. Given this, the triggers open panels in place of the keyboard
+   * (instead of calling onEmoji / onStickers, which stay for older screens).
+   */
+  renderPanel?: (panel: ComposerSheetPanel) => ReactNode;
+  onPanelChange?: (panel: ComposerPanel) => void;
 }) {
   const localRef = useRef<ComposerInputHandle | null>(null);
   const field = inputRef ?? localRef;
   const hadReply = useRef(false);
-  const pressRef = useRef<{ x: number } | null>(null);
+  const pressRef = useRef<{ x: number; y: number } | null>(null);
   const [sliding, setSliding] = useState(false);
+  const [locking, setLocking] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [panel, setPanel] = useState<ComposerPanel>("none");
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    typeof window === "undefined" ? 800 : window.innerHeight,
+  );
+  const keyboardHeight = useKeyboardHeight();
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const hasText = value.trim().length > 0;
-  // A photo with no caption is still sendable, so the screen decides whether
-  // the action is a send arrow; text alone is the default.
   const canSendNow = canSend ?? hasText;
+  const slowLeft = Math.max(0, Math.round(slowModeSeconds ?? 0));
 
-  // Auto-grow to five lines, then scroll. `height:auto` first is what lets the
-  // box shrink again after a deletion. The contenteditable measures the same
-  // way a textarea did.
+  const go = useCallback(
+    (event: Parameters<typeof nextPanel>[1]) => {
+      setPanel((current) => {
+        const next = nextPanel(current, event);
+        onPanelChange?.(next);
+        return next;
+      });
+    },
+    [onPanelChange],
+  );
+
+  useEffect(() => {
+    const onResize = () => setViewportHeight(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Android Back closes a panel before it leaves the screen: one history entry
+  // is pushed when a panel opens, and the pop closes it.
+  useEffect(() => {
+    if (!panel || panel === "none" || panel === "keyboard") return;
+    const onPop = () => {
+      setPanel("none");
+      onPanelChange?.("none");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [panel, onPanelChange]);
+
+  // Drafts: restore once per conversation, save as you type, never on send.
+  const draftIdRef = useRef(draftId);
+  useEffect(() => {
+    draftIdRef.current = draftId;
+  }, [draftId]);
+  useEffect(() => {
+    if (!draftId) return;
+    const saved = readDraft(draftId);
+    if (saved && !value) onChange(saved, saved.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftId]);
+  useEffect(() => {
+    if (!draftId) return;
+    if (!value.trim()) {
+      clearDraft(draftId);
+      return;
+    }
+    queueDraft(draftId, value);
+  }, [draftId, value]);
+
+  // Auto-grow to five lines, then scroll.
   useEffect(() => {
     const node = field.current?.element();
     if (!node) return;
@@ -146,8 +246,6 @@ export function MessageComposer({
     node.style.overflowY = node.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
   }, [value, field]);
 
-  // Entering reply/edit mode is a user intent to type, so the keyboard should
-  // already be up. The ref keeps unrelated composer renders from stealing focus.
   useEffect(() => {
     if (reply && !hadReply.current) {
       requestAnimationFrame(() => field.current?.focus());
@@ -160,8 +258,10 @@ export function MessageComposer({
       if (disabled || sending || !canRecord || canSendNow) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture?.(event.pointerId);
-      pressRef.current = { x: event.clientX };
+      pressRef.current = { x: event.clientX, y: event.clientY };
       setSliding(false);
+      setLocking(false);
+      setLocked(false);
       vibrate(15);
       onRecordStart?.();
     },
@@ -169,48 +269,79 @@ export function MessageComposer({
   );
 
   const moveRecord = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!pressRef.current) return;
-    setSliding(event.clientX - pressRef.current.x < -SLIDE_CANCEL_PX);
+    const start = pressRef.current;
+    if (!start) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    setSliding(dx < -SLIDE_CANCEL_PX);
+    // Slide up (and not sideways) to lock the recording hands-free.
+    setLocking(dy < -SLIDE_LOCK_PX && Math.abs(dx) < SLIDE_CANCEL_PX);
   }, []);
 
   const finishRecord = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>, cancelled = false) => {
       const start = pressRef.current;
       if (!start) return;
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
       pressRef.current = null;
-      const slid = event.clientX - start.x < -SLIDE_CANCEL_PX;
+      const slid = dx < -SLIDE_CANCEL_PX;
+      const lock = dy < -SLIDE_LOCK_PX && Math.abs(dx) < SLIDE_CANCEL_PX;
       setSliding(false);
-      if (cancelled || slid) onRecordCancel?.();
-      else onRecordEnd?.();
+      setLocking(false);
+      if (cancelled || slid) {
+        setLocked(false);
+        onRecordCancel?.();
+        return;
+      }
+      if (lock) {
+        setLocked(true);
+        vibrate(10);
+        return;
+      }
+      onRecordEnd?.();
     },
     [onRecordCancel, onRecordEnd],
   );
 
   const submit = () => {
     if (disabled || !canSendNow) return;
+    if (draftId) clearDraft(draftId);
+    setLocked(false);
     onSend();
-    // The keyboard must stay up after a send; the screen also refocuses, this
-    // covers the browser that blurs the field when the button is pressed.
     field.current?.focus();
   };
 
+  const openPanel = (which: ComposerSheetPanel) => {
+    if (disabled) return;
+    // The trigger's own callback is for screens that still own their sheets.
+    const legacy = which === "emoji" ? onEmoji : which === "stickers" ? onStickers : undefined;
+    if (!renderPanel && legacy) {
+      legacy();
+      return;
+    }
+    go({ type: "toggle", panel: which });
+  };
+
+  const panelSpace = useMemo(
+    () => panelHeight(panel, keyboardHeight, viewportHeight),
+    [panel, keyboardHeight, viewportHeight],
+  );
+
+  const showKeyboardIcon = emojiTriggerShowsKeyboard(panel);
+  const isPanelOpen = backShouldClosePanel(panel) && panel !== "keyboard";
+  const micActive = allowVoice && !canSendNow && !recording;
+
   return (
     <div
-      className={cn(
-        // Solid, not blurred: one opaque bar is cheaper to composite on a phone
-        // than a stack of translucent bars, and it cannot double up with a
-        // screen's own wrapper.
-        "composer-bar relative z-20 shrink-0 px-2.5 pt-1.5",
-        "pb-[max(env(safe-area-inset-bottom,0px),0.375rem)]",
-      )}
+      className="composer-bar relative z-20 shrink-0 px-3 pt-2"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 8px)" }}
     >
       <div className="mx-auto w-full max-w-3xl">
         {above}
 
         {reply ? (
-          // 40px strip: a lime bar, the target of the reply, and one line of
-          // the message. The whole middle is a jump link on replies.
-          <div className="chat-reply-strip mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
+          <div className="chat-reply-strip mb-2 flex h-9 items-stretch overflow-hidden rounded-lg border border-[#2a2a2e] bg-[#141416]">
             <span className="w-[3px] shrink-0 bg-primary" aria-hidden="true" />
             <button
               type="button"
@@ -221,9 +352,7 @@ export function MessageComposer({
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
                 {reply.label}
               </span>
-              <span className="truncate text-[11px] leading-tight text-[#bdbdbd]">
-                {reply.preview}
-              </span>
+              <span className="truncate text-[11px] leading-tight text-[#9a9aa0]">{reply.preview}</span>
             </button>
             <button
               type="button"
@@ -233,145 +362,229 @@ export function MessageComposer({
                 field.current?.focus();
               }}
               aria-label="Cancel reply"
-              className="grid w-10 shrink-0 place-items-center text-[#8f8f8f] transition-colors hover:text-white"
+              className="grid w-11 shrink-0 place-items-center text-[#9a9aa0] transition-colors hover:text-[#f2efe6]"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         ) : null}
 
-        <div className="flex items-center gap-1.5">
-          {attach}
-
-          {/* The pill: 40px minimum, 20px radius. Focus is the caret plus a
-              quiet neutral border — no lime box around the field. */}
+        {/* The panel slot: exactly the keyboard's height, so nothing jumps. */}
+        {panelSpace !== null && renderPanel ? (
           <div
-            className={cn(
-              "relative flex min-w-0 flex-1 items-center rounded-[20px] border transition-colors duration-150",
-              "motion-reduce:transition-none",
-              disabled
-                ? "border-white/[0.08] bg-[#0d0d0d]"
-                : "border-white/[0.14] bg-[#121212] focus-within:border-white/25",
-            )}
-            style={{ minHeight: 40 }}
+            ref={panelRef}
+            className="mb-2 overflow-y-auto overscroll-contain rounded-2xl border border-[#2a2a2e] bg-[#141416]"
+            style={{ height: panelSpace }}
+            role="dialog"
+            aria-label={
+              panel === "emoji" ? "Emoji" : panel === "stickers" ? "Stickers and GIFs" : "Attach"
+            }
           >
-            {recording ? (
-              <div className="flex h-10 w-full items-center gap-2.5 px-2.5" aria-live="polite">
-                <span className="composer-record-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#ff5d68]" />
-                <span className="text-[13px] font-semibold tabular-nums text-[#f2f2f2]">
-                  {formatTimer(recordMs)}
-                </span>
-                <span
-                  className={cn(
-                    "ml-auto truncate text-[11px]",
-                    sliding ? "font-bold text-[#ff8a91]" : "text-[#8c8c8c]",
-                  )}
-                >
-                  {sliding ? "Release to cancel" : "Slide to cancel"}
-                </span>
-              </div>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={onEmoji}
-                  disabled={disabled}
-                  aria-label="Emoji, GIFs and stickers"
-                  title="Emoji, GIFs and stickers"
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary transition-opacity disabled:opacity-40"
-                >
-                  <Smile className="h-5 w-5" strokeWidth={2} />
-                </button>
-                <ComposerInput
-                  ref={field}
-                  value={value}
-                  onChange={(next) => onChange(next, next.length)}
-                  disabled={disabled}
-                  onKeyUp={onKeyUp}
-                  onClick={() => onTextareaClick?.()}
-                  onPaste={(event) => onPaste?.(event)}
-                  onPasteFiles={onPasteFiles}
-                  onFocus={onFocus}
-                  onBlur={onBlur}
-                  onEnter={submit}
-                  resolveEmoji={resolveEmoji}
-                  onKeyDown={(event) => {
-                    onKeyDown?.(event);
-                    if (event.defaultPrevented) return;
-                    // Enter-to-send lives inside ComposerInput: it knows about
-                    // IME composition and phone keyboards. Slash menus still
-                    // see the key first, through the handler above.
-                  }}
-                  placeholder={disabled ? disabledHint : placeholder}
-                  ariaLabel={placeholder}
-                  maxLength={maxLength}
-                  enterKeyHint="send"
-                  className={disabled ? "text-[#6f6f6f]" : undefined}
-                  style={{ maxHeight: MAX_INPUT_HEIGHT }}
-                />
-                <button
-                  type="button"
-                  onClick={onStickers}
-                  disabled={disabled}
-                  aria-label="Cat emojis"
-                  title="Cat emojis"
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#8f8f8f] transition-colors hover:text-primary disabled:opacity-40"
-                >
-                  <Cat className="h-5 w-5" strokeWidth={1.8} />
-                </button>
-              </>
-            )}
-            {mentions}
-            {overlay}
+            {renderPanel(panel as ComposerSheetPanel)}
           </div>
+        ) : null}
 
-          {(!allowVoice || canSendNow) && !recording ? (
+        {recordDenied ? (
+          <p className="mb-2 rounded-lg border border-[#2a2a2e] bg-[#141416] px-3 py-2 text-[11.5px] leading-snug text-[#9a9aa0]">
+            Microphone access is off. Allow it in your browser site settings, then hold the mic again.
+          </p>
+        ) : null}
+
+        {disabled ? (
+          // Read-only: one line, the reason, no panels. Not a dead field with no
+          // explanation, which is what "you can't post here" used to look like.
+          <div className="flex min-h-11 items-center gap-2 rounded-[22px] border border-[#2a2a2e] bg-[#1c1c1f] px-3">
+            <Lock className="h-4 w-4 shrink-0 text-[#9a9aa0]" aria-hidden="true" />
+            <p className="truncate text-[13px] text-[#9a9aa0]">{disabledHint}</p>
+          </div>
+        ) : (
+          <div className="flex items-end gap-2">
+            {attach ?? (
+              <button
+                type="button"
+                onClick={() => (onAttach ? onAttach() : openPanel("attach"))}
+                aria-label="Attach"
+                aria-expanded={panel === "attach"}
+                style={{ width: CONTROL, height: CONTROL }}
+                className={cn(
+                  "grid shrink-0 place-items-center rounded-full border transition-colors",
+                  panel === "attach"
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-[#2a2a2e] bg-[#141416] text-[#9a9aa0] hover:bg-[#1c1c1f] hover:text-[#f2efe6]",
+                )}
+              >
+                <span className="text-[20px] leading-none">+</span>
+              </button>
+            )}
+
+            <div
+              className={cn(
+                "flex min-w-0 flex-1 items-end rounded-[22px] border bg-[#141416] transition-colors duration-150 motion-reduce:transition-none",
+                panel === "keyboard"
+                  ? "border-[#2a2a2e]"
+                  : "border-[#2a2a2e] focus-within:border-[#3a3a40]",
+              )}
+              style={{ minHeight: CONTROL }}
+            >
+              {recording ? (
+                <div className="flex h-11 w-full items-center gap-2.5 px-3" aria-live="polite">
+                  <span className="composer-record-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#ff5d68]" />
+                  <span className="text-[13px] font-semibold tabular-nums text-[#f2efe6]">
+                    {formatTimer(recordMs)}
+                  </span>
+                  <span
+                    className={cn(
+                      "ml-auto truncate text-[11px]",
+                      sliding ? "font-bold text-[#ff8a91]" : "text-[#9a9aa0]",
+                    )}
+                  >
+                    {locked
+                      ? "Locked · tap stop to send"
+                      : sliding
+                        ? "Release to cancel"
+                        : locking
+                          ? "Release to lock"
+                          : "Slide to cancel · up to lock"}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openPanel("emoji")}
+                    aria-label={showKeyboardIcon ? "Close emoji and show keyboard" : "Emoji"}
+                    aria-expanded={panel === "emoji"}
+                    className={cn(
+                      "m-1 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors",
+                      panel === "emoji"
+                        ? "bg-primary/15 text-primary"
+                        : "text-[#9a9aa0] hover:bg-[#1c1c1f] hover:text-[#f2efe6]",
+                    )}
+                  >
+                    {showKeyboardIcon ? (
+                      <Keyboard className="h-5 w-5" strokeWidth={2} />
+                    ) : (
+                      <Smile className="h-5 w-5" strokeWidth={2} />
+                    )}
+                  </button>
+                  <ComposerInput
+                    ref={field}
+                    value={value}
+                    onChange={(next) => onChange(next, next.length)}
+                    onKeyUp={onKeyUp}
+                    onClick={() => {
+                      go({ type: "focus-field" });
+                      onTextareaClick?.();
+                    }}
+                    onPaste={(event) => onPaste?.(event)}
+                    onPasteFiles={onPasteFiles}
+                    onFocus={() => {
+                      go({ type: "focus-field" });
+                      onFocus?.();
+                    }}
+                    onBlur={() => {
+                      go({ type: "blur-field" });
+                      onBlur?.();
+                    }}
+                    onEnter={submit}
+                    resolveEmoji={resolveEmoji}
+                    onKeyDown={(event) => {
+                      onKeyDown?.(event);
+                      if (event.defaultPrevented) return;
+                      if (event.key === "Escape" && isPanelOpen) {
+                        event.preventDefault();
+                        go({ type: "close" });
+                      }
+                    }}
+                    placeholder={placeholder}
+                    ariaLabel={`Message in ${chatType === "realm" ? "channel" : chatType === "voice" ? "voice chat" : "chat"}`}
+                    maxLength={maxLength}
+                    enterKeyHint="send"
+                    className="text-[16px] leading-[22px]"
+                    style={{ maxHeight: MAX_INPUT_HEIGHT }}
+                  />
+                </>
+              )}
+              {mentions}
+              {overlay}
+            </div>
+
             <button
               type="button"
-              onClick={submit}
-              disabled={disabled || sending || !canSendNow}
-              aria-label={sending ? "Sending message" : "Send"}
+              onClick={() => openPanel("stickers")}
+              aria-label="Stickers and GIFs"
+              aria-expanded={panel === "stickers"}
+              style={{ width: CONTROL, height: CONTROL }}
               className={cn(
-                "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-[#0b0b0b]",
-                "transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none",
-                "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "grid shrink-0 place-items-center rounded-full border transition-colors",
+                panel === "stickers"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-[#2a2a2e] bg-[#141416] text-[#9a9aa0] hover:bg-[#1c1c1f] hover:text-[#f2efe6]",
               )}
             >
-              <span
-                key={canSendNow ? "send" : "idle"}
-                className="composer-action-swap grid place-items-center"
-              >
-                <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.6} />
-              </span>
+              <Sticker className="h-5 w-5" strokeWidth={1.9} />
             </button>
-          ) : (
-            <button
-              type="button"
-              onPointerDown={beginRecord}
-              onPointerMove={moveRecord}
-              onPointerUp={(event) => finishRecord(event)}
-              onPointerCancel={(event) => finishRecord(event, true)}
-              onLostPointerCapture={(event) => finishRecord(event, true)}
-              onContextMenu={(event) => event.preventDefault()}
-              disabled={disabled || sending || !canRecord}
-              aria-label={recording ? "Release to send voice message" : "Voice message"}
-              aria-pressed={recording}
-              className={cn(
-                "grid shrink-0 touch-none place-items-center rounded-full bg-primary text-[#0b0b0b]",
-                "transition-[width,height,transform] duration-150 active:scale-[0.94] motion-reduce:transition-none",
-                "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                recording ? "h-12 w-12" : "h-10 w-10",
-              )}
-            >
-              <span
-                key={recording ? "rec" : "mic"}
-                className="composer-action-swap grid place-items-center"
+
+            {micActive && !locked ? (
+              <button
+                type="button"
+                onPointerDown={beginRecord}
+                onPointerMove={moveRecord}
+                onPointerUp={(event) => finishRecord(event)}
+                onPointerCancel={(event) => finishRecord(event, true)}
+                onLostPointerCapture={(event) => finishRecord(event, true)}
+                onContextMenu={(event) => event.preventDefault()}
+                disabled={sending || !canRecord}
+                aria-label={recording ? "Release to send voice message" : "Record voice message"}
+                aria-pressed={recording}
+                style={{ width: CONTROL, height: CONTROL }}
+                className={cn(
+                  "grid shrink-0 touch-none place-items-center rounded-full bg-primary text-[#0b0b0c]",
+                  "transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none",
+                  "disabled:opacity-40",
+                )}
               >
-                <Mic className={recording ? "h-5 w-5" : "h-[18px] w-[18px]"} strokeWidth={2.5} />
-              </span>
-            </button>
-          )}
-        </div>
+                <Mic className="h-[18px] w-[18px]" strokeWidth={2.5} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (locked) {
+                    setLocked(false);
+                    onRecordEnd?.();
+                    return;
+                  }
+                  submit();
+                }}
+                disabled={!locked && (sending || !canSendNow || slowLeft > 0)}
+                aria-label={
+                  locked
+                    ? "Stop and send voice message"
+                    : sending
+                      ? "Sending message"
+                      : slowLeft > 0
+                        ? `Slow mode, wait ${slowLeft}s`
+                        : "Send"
+                }
+                style={{ width: CONTROL, height: CONTROL }}
+                className={cn(
+                  "grid shrink-0 place-items-center rounded-full bg-primary text-[#0b0b0c]",
+                  "transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none",
+                  "disabled:opacity-40",
+                )}
+              >
+                {locked ? (
+                  <Square className="h-[16px] w-[16px]" strokeWidth={2.6} fill="currentColor" />
+                ) : slowLeft > 0 ? (
+                  <span className="text-[12px] font-bold tabular-nums">{slowLeft}</span>
+                ) : (
+                  <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.6} />
+                )}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
