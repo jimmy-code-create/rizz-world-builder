@@ -115,20 +115,17 @@ export function FollowSuggestions() {
     <section
       data-focus-hide
       aria-labelledby="suggested-for-you-heading"
-      className="mb-3 overflow-hidden rounded-[12px] border border-white/[0.06] bg-[#141416]"
+      className="mb-3"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3.5 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c9ff3d]" />
-          <h3
-            id="suggested-for-you-heading"
-            className="truncate font-display text-[14px] font-extrabold tracking-[-0.01em] text-white"
-          >
-            {t("suggested_for_you")}
-          </h3>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <span className="mr-0.5 font-mono text-[10px] tabular-nums tracking-[0.1em] text-zinc-500">
+      <div className="flex items-center justify-between gap-2 px-4 pb-1 pt-1">
+        <h3
+          id="suggested-for-you-heading"
+          className="truncate text-[18px] font-bold tracking-[-0.01em] text-white"
+        >
+          {t("suggested_for_you")}
+        </h3>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <span className="mr-1 font-mono text-[11px] tabular-nums text-zinc-600">
             {String(data.length).padStart(2, "0")}
           </span>
           <button
@@ -136,7 +133,7 @@ export function FollowSuggestions() {
             onClick={() => nudge(-1)}
             disabled={!edges.left}
             aria-label="Previous suggestions"
-            className="grid h-9 w-9 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
+            className="grid h-8 w-8 place-items-center rounded-full text-zinc-500 transition-colors hover:text-zinc-200 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -145,7 +142,7 @@ export function FollowSuggestions() {
             onClick={() => nudge(1)}
             disabled={!edges.right}
             aria-label="More suggestions"
-            className="grid h-9 w-9 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
+            className="grid h-8 w-8 place-items-center rounded-full text-zinc-500 transition-colors hover:text-zinc-200 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
           >
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -157,7 +154,7 @@ export function FollowSuggestions() {
         onScroll={measure}
         role="list"
         aria-label={t("suggested_for_you")}
-        className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-3.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {visible.map((p) => {
           const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
@@ -170,18 +167,18 @@ export function FollowSuggestions() {
               key={p.id}
               data-suggestion-card
               role="listitem"
-              className="relative flex w-[132px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-[16px] border-2 border-[#c9ff3d]/30 bg-[#141416] px-2 py-3"
+              className="relative flex w-[156px] shrink-0 snap-start flex-col items-center gap-2 rounded-2xl border border-white/[0.07] bg-[#141416] p-3.5 transition-transform duration-[120ms] ease-out active:scale-[0.98] motion-reduce:active:scale-100"
             >
               <button
                 type="button"
                 aria-label={`Dismiss @${p.username}`}
                 onClick={() => setDismissed((current) => [...current, p.id])}
-                className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
+                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-zinc-500 transition-colors hover:text-zinc-200"
               >
-                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
               <span
-                className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full ring-2 ring-[#c9ff3d]/25"
+                className="mt-1 grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full"
                 style={{ background: p.avatar_url ? "#141418" : palette.bg }}
                 aria-hidden={p.avatar_url ? undefined : true}
               >
@@ -204,13 +201,13 @@ export function FollowSuggestions() {
                 params={{ username: p.username ?? "" }}
                 className="w-full text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
               >
-                <p className="truncate font-display text-[13px] font-extrabold leading-tight text-white">
+                <p className="w-full truncate text-[15px] font-semibold leading-tight text-white">
                   {p.display_name || p.username}
                 </p>
-                <p className="mt-0.5 truncate text-[10.5px] text-zinc-500">@{p.username}</p>
+                <p className="mt-0.5 w-full truncate text-[13px] text-zinc-500">@{p.username}</p>
               </Link>
-              <p className="line-clamp-1 h-[12px] w-full text-center text-[10px] text-[#c9ff3d]/70">
-                {shared.length > 0 ? shared.join(" / ") : "\u00a0"}
+              <p className="w-full truncate text-center text-[12px] text-zinc-500">
+                {shared.length > 0 ? shared.join(" · ") : "\u00a0"}
               </p>
               <button
                 type="button"
@@ -221,9 +218,9 @@ export function FollowSuggestions() {
                 disabled={followMut.isPending || followed.includes(p.id)}
                 aria-label={`Follow @${p.username}`}
                 className={cn(
-                  "mt-0.5 inline-flex h-11 w-full items-center justify-center gap-1 rounded-full px-2 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-100",
+                  "mt-1 inline-flex h-9 items-center justify-center gap-1 self-center rounded-full px-4 text-[14px] font-semibold transition-transform duration-[120ms] ease-out active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-100",
                   followed.includes(p.id)
-                    ? "border border-[#c9ff3d]/45 bg-transparent text-[#c9ff3d]"
+                    ? "border border-white/25 bg-transparent text-zinc-200"
                     : "bg-[#c9ff3d] text-[#0b0b0c]",
                 )}
               >
