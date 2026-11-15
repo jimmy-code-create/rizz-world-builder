@@ -36,12 +36,13 @@ const picker = readFileSync(
 const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 const realm = readFileSync(new URL("../src/routes/_app/r.$slug.tsx", import.meta.url), "utf8");
 
-await check("phone sheet and desktop popout use Discord's popout colour", async () => {
+await check("phone sheet is black, desktop popout keeps Discord's colour", async () => {
   const swipe = readFileSync(new URL("../src/components/ui/swipe-sheet.tsx", import.meta.url), "utf8");
   assert.ok(menu.includes("bg-[#111214]"), "the menu surface must use Discord's #111214");
   // The phone sheet is the shared swipeable one, which owns the surface colour.
+  // Every action sheet is pure black now, not the Discord grey it used to be.
   assert.match(menu, /<SwipeSheet/, "the mobile sheet can be swiped away");
-  assert.ok(swipe.includes("bg-[#111214]"), "the swipe sheet surface");
+  assert.ok(swipe.includes("bg-black"), "the swipe sheet surface");
   assert.match(menu, /PopoverContent[\s\S]*?bg-\[#111214\]/, "the desktop popover");
   assert.ok(menu.includes("rounded-lg border border-black/50"), "desktop popout chrome");
 });

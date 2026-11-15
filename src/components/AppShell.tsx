@@ -196,8 +196,8 @@ const navItem = (active: boolean) =>
 const navTile = (active: boolean) =>
   `flex min-h-[56px] flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
     active
-      ? "border-primary bg-primary/10 text-primary font-semibold"
-      : "border-border bg-card text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+      ? "border-white/[0.16] bg-white/[0.08] text-foreground font-semibold"
+      : "border-white/[0.06] bg-transparent text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
   }`;
 
 const mobileTabs = [
@@ -604,7 +604,7 @@ export function AppShell() {
       {!isConversation && (
         <header
           data-hidden={headerHidden}
-          className="shell-header chrome chrome-auto-hide md:hidden absolute inset-x-0 top-0 z-40 flex items-center gap-2 border-b border-white/[0.06] bg-[#0b0b0c] px-3 pb-2"
+          className="shell-header chrome chrome-auto-hide md:hidden absolute inset-x-0 top-0 z-40 flex items-center gap-2 border-b-0 bg-black px-3 pb-2"
           style={{
             minHeight: "var(--chrome-top)",
             paddingTop: "max(var(--safe-top), 0.5rem)",
@@ -613,7 +613,7 @@ export function AppShell() {
           <Link
             to="/feed"
             aria-label="RIZZ home"
-            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 border border-border p-1.5 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-surface-3"
+            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl p-1.5 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <img
               src="/brand/rizz-cat-logo.svg"
@@ -625,7 +625,7 @@ export function AppShell() {
           <Link
             to="/explore"
             aria-label="Search and Explore RIZZ"
-            className="flex h-11 min-h-[44px] min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-surface-2/60 px-3.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-11 min-h-[44px] min-w-0 flex-1 items-center gap-2.5 rounded-full px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1 truncate">{t("search_placeholder")}</span>
@@ -784,7 +784,9 @@ export function AppShell() {
           if (!open) setEditShortcuts(false);
         }}
         title={t("everything_on_rizz")}
-        className="bg-[#0b0b0c] max-h-[85dvh] overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        showClose
+        className="max-h-[85dvh]"
+        bodyClassName="px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
           <SheetHeader className="text-left pt-2 pr-8">
             <div className="flex items-center justify-between gap-3">
@@ -804,7 +806,7 @@ export function AppShell() {
           {/* What's happening */}
           <Link
             to="/pulse"
-            className="mt-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-primary/40 bg-[#15180f] p-3 transition-colors hover:bg-[#1b2012] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mt-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
               <Activity className="h-5 w-5" />
@@ -824,7 +826,7 @@ export function AppShell() {
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-[#141416] p-3 transition-colors hover:bg-[#1c1c1f] min-h-[56px]"
+            className="mt-3 flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-transparent p-3 transition-colors hover:bg-white/[0.04] min-h-[56px]"
           >
             <UserAvatar
               src={profile?.avatar_url}

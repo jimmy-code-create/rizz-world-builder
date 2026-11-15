@@ -16,9 +16,9 @@ import {
   Plus,
   Loader2,
   Search,
-  Smile,
   Sparkles,
   Sticker as StickerIcon,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -40,13 +40,15 @@ import {
   type StickerPack,
 } from "@/lib/stickers";
 
-export type ChatPickerTab = "recent" | "emoji" | "gifs" | "stickers" | "favorites";
+export type ChatPickerTab = "emoji" | "gifs" | "stickers";
 export type ChatPanelMode = "picker" | "attach";
 
 export type ChatDockPanelProps = {
   mode: ChatPanelMode;
   tab: ChatPickerTab;
   onTabChange: (tab: ChatPickerTab) => void;
+  /** Closes the dock from its own header, like Discord's picker. */
+  onClose?: () => void;
   disabled?: boolean;
   onPickEmoji: (token: string) => void;
   onSendMarker: (marker: string) => void;
@@ -61,12 +63,10 @@ export type ChatDockPanelProps = {
   scheduleDisabled?: boolean;
 };
 
-const TABS: Array<{ id: ChatPickerTab; label: string; icon: typeof Smile }> = [
-  { id: "recent", label: "Recent", icon: Clock3 },
-  { id: "emoji", label: "Emoji", icon: Smile },
-  { id: "gifs", label: "GIFs", icon: ImageIcon },
-  { id: "stickers", label: "Stickers", icon: StickerIcon },
-  { id: "favorites", label: "Favorites", icon: Heart },
+const TABS: Array<{ id: ChatPickerTab; label: string }> = [
+  { id: "emoji", label: "Emoji" },
+  { id: "gifs", label: "GIFs" },
+  { id: "stickers", label: "Stickers" },
 ];
 
 const CATEGORIES = ["Hi", "Love", "Haha", "Sad", "Yay", "Wow"] as const;
@@ -380,6 +380,7 @@ const ChatDockPanelImpl = ({
   mode,
   tab,
   onTabChange,
+  onClose,
   disabled = false,
   onPickEmoji,
   onSendMarker,
@@ -417,8 +418,8 @@ const ChatDockPanelImpl = ({
   // Each shelf remembers where it was scrolled to.
   const scrollMemory = useRef<Record<string, number>>({});
   const [pack, setPack] = useState<StickerPack>("noto");
-  // Each shelf remembers where it was scrolled to (stickers per pack).
-  const scrollKey = `${tab}:${tab === "stickers" ? pack : ""}`;
+  // Each shelf remembers where it was scrolled to (stickers per pack, emoji per set).
+  const scrollKey = `${tab}:${tab === "stickers" ? pack : tab === "emoji" ? emojiPack : ""}`;
   const [panelRecents, setPanelRecents] = useState<string[]>([]);
   const [gifs, setGifs] = useState<GifResult[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
@@ -644,8 +645,45 @@ const ChatDockPanelImpl = ({
     >
       {mode === "picker" ? (
         <>
-          <div className="flex shrink-0 items-center gap-2 px-2.5 pb-1.5 pt-2">
-            <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-secondary px-3">
+          <div className="flex shrink-0 items-center gap-1.5 px-2.5 pb-1.5 pt-2">
+            <div className="flex h-9 min-w-0 flex-1 items-center gap-0.5 rounded-[11px] bg-secondary p-0.5">
+              {TABS.map((item) => {
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onTabChange(item.id)}
+                    aria-pressed={active}
+                    className={cn(
+                      "flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[9px] text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    {active ? (
+                      <span aria-hidden className="h-1 w-1 shrink-0 rounded-full bg-primary" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close emoji picker"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+
+          <div className="shrink-0 px-2.5 pb-2">
+            <label className="flex h-9 min-w-0 items-center gap-2 rounded-[10px] bg-secondary px-3">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <input
                 value={query}
@@ -661,16 +699,6 @@ const ChatDockPanelImpl = ({
                 aria-label="Search emoji and stickers"
               />
             </label>
-            {onManageEmoji && tab === "emoji" ? (
-              <button
-                type="button"
-                onClick={onManageEmoji}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground hover:text-foreground"
-                aria-label="Manage emoji"
-              >
-                <Sparkles className="h-4 w-4" />
-              </button>
-            ) : null}
           </div>
           {tab === "emoji" && emojiPacks.length > 1 ? (
             <div className="chat-dock-chips shrink-0">
@@ -741,7 +769,7 @@ const ChatDockPanelImpl = ({
       ) : (
         <>
           <div
-            className="relative min-h-0 flex-1 overflow-hidden"
+            className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
             onTouchStart={(event) => {
               const touch = event.touches[0];
               tabSwipe.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
@@ -795,10 +823,20 @@ const ChatDockPanelImpl = ({
                   hint="Try another search."
                 />
               ))}
-            {tab !== "gifs" &&
-              (tab === "recent" ? (
+            {tab === "stickers" ? (
+              stickerCells.length ? (
+                gridFor(stickerCells)
+              ) : (
+                <PanelEmpty
+                  icon={<StickerIcon className="h-5 w-5" />}
+                  title="No stickers in this pack"
+                  hint="Try another pack above."
+                />
+              )
+            ) : tab === "emoji" ? (
+              emojiPack === "recent" ? (
                 recentCells.length ? (
-                  gridFor(recentCells)
+                  gridFor(recentCells.filter((cell) => cell.kind === "emoji" || cell.kind === "realm"))
                 ) : (
                   <PanelEmpty
                     icon={<Clock3 className="h-5 w-5" />}
@@ -806,9 +844,9 @@ const ChatDockPanelImpl = ({
                     hint="Emoji and stickers you pick show up here."
                   />
                 )
-              ) : tab === "favorites" ? (
+              ) : emojiPack === "favorites" ? (
                 favoriteCells.length ? (
-                  gridFor(favoriteCells)
+                  gridFor(favoriteCells.filter((cell) => cell.kind === "emoji" || cell.kind === "realm"))
                 ) : (
                   <PanelEmpty
                     icon={<Heart className="h-5 w-5" />}
@@ -816,51 +854,10 @@ const ChatDockPanelImpl = ({
                     hint="Hold an emoji or sticker to save it."
                   />
                 )
-              ) : tab === "stickers" ? (
-                stickerCells.length ? (
-                  gridFor(stickerCells)
-                ) : (
-                  <PanelEmpty
-                    icon={<StickerIcon className="h-5 w-5" />}
-                    title="No stickers in this pack"
-                    hint="Try another pack above."
-                  />
-                )
               ) : (
-                gridFor(
-                  tab === "emoji" && emojiPack === "recent"
-                    ? recentCells.filter((cell) => cell.kind === "emoji" || cell.kind === "realm")
-                    : tab === "emoji" && emojiPack === "favorites"
-                      ? favoriteCells.filter((cell) => cell.kind === "emoji" || cell.kind === "realm")
-                      : emojiCells,
-                )
-              ))}
-          </div>
-          <div className="relative z-10 shrink-0 border-t border-border bg-[#141416] px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-1">
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute left-1 top-0 h-[2px] w-1/5 rounded-full bg-primary transition-transform duration-200 ease-out motion-reduce:transition-none"
-              style={{ transform: `translateX(${Math.max(0, TABS.findIndex((item) => item.id === tab)) * 100}%)` }}
-            />
-            <div className="grid grid-cols-5 gap-0.5">
-            {TABS.map((item) => {
-              const Icon = item.icon;
-              const active = tab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onTabChange(item.id)}
-                  className={cn("chat-dock-tab", active && "is-active")}
-                  aria-label={item.label}
-                  aria-pressed={active}
-                >
-                  <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.4 : 1.9} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-            </div>
+                gridFor(emojiCells)
+              )
+            ) : null}
           </div>
         </>
       )}

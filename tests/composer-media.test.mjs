@@ -182,8 +182,9 @@ await check("composer rows share one height", () => {
   const shared = read("src/components/chat/MessageComposer.tsx");
   const styles = read("src/styles.css");
   assert.match(shared, /grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/, "the + is a 40px disc");
-  assert.match(shared, /chat-composer-avatar/, "the sticker button is the member's face");
-  assert.match(styles, /\.chat-composer-avatar \{[\s\S]{0,120}?width: 36px/, "36px, per the dock design");
+  assert.match(shared, /grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary/, "the sticker button is a borderless 40px disc");
+  assert.ok(!shared.includes("chat-composer-avatar"), "the sticker button carries no ring or glow");
+  assert.ok(!/chat-dock-glow/.test(styles), "the open-panel glow is gone");
   assert.match(shared, /grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/, "send is 40px");
   assert.match(composer, /triggerClassName=\{compact \? "h-9 w-9" : "h-10 w-10"\}/, "the comment box still matches its row");
 });

@@ -46,7 +46,8 @@ function vibrate(ms: number) {
 
 function clampPanelHeight(value: number) {
   const viewport = window.visualViewport?.height ?? window.innerHeight;
-  return Math.round(Math.min(viewport * 0.6, Math.max(280, value || viewport * 0.4)));
+  const preferred = Math.max(value || 0, viewport * 0.56);
+  return Math.round(Math.min(viewport * 0.68, Math.max(380, preferred)));
 }
 
 function readStoredKeyboardHeight() {
@@ -643,10 +644,7 @@ export function ChatComposer({
             aria-label="Stickers and GIFs"
             title="Stickers and GIFs"
             aria-expanded={panel === "picker"}
-            className={cn(
-              "chat-composer-avatar shrink-0 rounded-full text-primary",
-              panel === "picker" && "chat-composer-avatar--active",
-            )}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary transition-transform active:scale-[0.94] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {/* The dock's own mark, not the member's face: this opens art, not identity. */}
             <Sticker className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -695,8 +693,8 @@ export function ChatComposer({
 
       <div
         className={cn(
-          "chat-dock-shell shrink-0 overflow-hidden max-h-[38dvh] transition-[height] duration-[180ms] ease-out motion-reduce:transition-none",
-          panel ? "border-t border-border bg-background" : "border-t-0",
+          "chat-dock-shell shrink-0 overflow-hidden max-h-[68dvh] transition-[height] duration-[180ms] ease-out motion-reduce:transition-none",
+          panel ? "bg-background" : "border-t-0",
         )}
         style={{ height: panel ? panelHeight : 0, pointerEvents: panel ? "auto" : "none" }}
         aria-hidden={!panel}
@@ -706,6 +704,7 @@ export function ChatComposer({
             mode={renderedPanel}
             tab={pickerTab}
             onTabChange={changeTab}
+            onClose={() => closePanel()}
             disabled={disabled}
             onPickEmoji={onPickEmoji}
             onSendMarker={onSendMarker}

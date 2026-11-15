@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { motion, useDragControls } from "framer-motion";
+import { X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export function SwipeSheet({
   children,
   className,
   bodyClassName,
+  showClose = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -26,6 +28,9 @@ export function SwipeSheet({
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  /** Draws an explicit X beside the grab handle; sheets with their own close
+   *  button leave this off so the header never carries two of them. */
+  showClose?: boolean;
 }) {
   const controls = useDragControls();
   const [dismissing, setDismissing] = useState(false);
@@ -36,7 +41,7 @@ export function SwipeSheet({
         side="bottom"
         hideClose
         className={cn(
-          "swipe-sheet max-h-[86dvh] rounded-t-[26px] border-white/[0.06] bg-[#111214] p-0",
+          "swipe-sheet max-h-[86dvh] rounded-t-[26px] border-0 bg-black p-0",
           className,
         )}
       >
@@ -59,18 +64,30 @@ export function SwipeSheet({
             setDismissing(false);
             onOpenChange(false);
           }}
-          className="flex max-h-[86dvh] flex-col overflow-hidden rounded-t-[26px] bg-[#0b0b0c]"
+          className="flex max-h-[86dvh] flex-col overflow-hidden rounded-t-[26px] bg-black"
         >
-          <div
-            onPointerDown={(event) => {
-              event.preventDefault();
-              controls.start(event);
-            }}
-            role="presentation"
-            className="flex shrink-0 cursor-grab touch-none justify-center pb-2 pt-2.5 active:cursor-grabbing"
-          >
-            <span aria-hidden className="h-1 w-10 rounded-full bg-white/45" />
-            <span className="sr-only">Drag down to close</span>
+          <div className="relative flex shrink-0 items-center justify-center pb-2 pt-2.5">
+            <div
+              onPointerDown={(event) => {
+                event.preventDefault();
+                controls.start(event);
+              }}
+              role="presentation"
+              className="flex w-24 cursor-grab touch-none justify-center active:cursor-grabbing"
+            >
+              <span aria-hidden className="h-1 w-10 rounded-full bg-white/45" />
+              <span className="sr-only">Drag down to close</span>
+            </div>
+            {showClose ? (
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                aria-label="Close sheet"
+                className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
           <div
             className={cn(

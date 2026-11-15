@@ -224,34 +224,36 @@ export function AccountMenu({
 
   const custom = selfPresence.customStatus;
   const rowCls =
-    "group flex min-h-14 w-full items-center gap-3 rounded-2xl border border-transparent px-4 text-[16px] font-semibold text-[#f4f4f2] transition-[transform,background-color,border-color] duration-120 hover:bg-white/[0.04] active:scale-[0.98] active:border-[#c9ff3d]/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 motion-reduce:active:scale-100";
+    "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]";
 
   const countChip = (value: number) =>
     value > 0 ? (
-      <span className="ml-auto shrink-0 rounded-full bg-[#c9ff3d] px-2 py-0.5 text-[11px] font-bold text-[#0b0b0c]">
+      <span className="ml-auto shrink-0 rounded-full bg-[#ff2d3f]/15 px-2 py-0.5 text-[11px] font-bold text-[#ff2d3f]">
         {formatCount(value)}
       </span>
     ) : null;
 
   // One icon treatment for every row: a 28px tile keeps the menu on a grid, and
   // lets the sign-out row read red without a separate branch for the markup.
-  // No boxed tiles: a plain 22px stroke icon reads cleaner and keeps the label
-  // on a single baseline.
   const rowIcon = (Icon: MenuIcon, danger = false) => (
     <span
       aria-hidden
-      className={cn("grid shrink-0 place-items-center", danger ? "text-[#ff5d5d]" : "text-[#c9ff3d]")}
+      className={cn(
+        "grid h-7 w-7 shrink-0 place-items-center rounded-lg border",
+        danger
+          ? "border-[#ff5d5d]/25 bg-[#ff5d5d]/10 text-[#ff5d5d]"
+          : "border-white/[0.07] bg-white/[0.04] text-muted-foreground",
+      )}
     >
-      <Icon className="h-[22px] w-[22px]" />
+      <Icon className="h-3.5 w-3.5" />
     </span>
   );
 
-  const linkInner = (Icon: MenuIcon, label: string, count?: number, chevron?: boolean) => (
+  const linkInner = (Icon: MenuIcon, label: string, count?: number) => (
     <>
       {rowIcon(Icon)}
       <span className="min-w-0 flex-1 truncate text-left">{label}</span>
       {count !== undefined ? countChip(count) : null}
-      {chevron ? <ChevronRight className="h-4 w-4 shrink-0 text-white/35" aria-hidden /> : null}
     </>
   );
 
@@ -278,7 +280,7 @@ export function AccountMenu({
           aria-label={ariaLabel}
           className={rowCls}
         >
-          {linkInner(Icon, label, count, true)}
+          {linkInner(Icon, label, count)}
         </Link>
       );
     }
@@ -300,7 +302,7 @@ export function AccountMenu({
     opts?: { danger?: boolean; ariaLabel?: string },
   ) => {
     const cls = opts?.danger
-      ? "flex h-[52px] w-full items-center justify-center gap-2 rounded-xl text-[16px] font-bold text-[#ff5d5d] transition-transform duration-120 hover:bg-[#ff5d5d]/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f] motion-reduce:active:scale-100"
+      ? "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#ff5d5d] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
       : rowCls;
     if (isMobile) {
       return (
@@ -330,7 +332,7 @@ export function AccountMenu({
 
   // Desktop groups its rows into two columns, so separators are a phone-only
   // device there; the columns get headings and a hairline divider instead.
-  const sep = isMobile ? <div aria-hidden className="my-1 h-px bg-[#2a2a2e]" /> : null;
+  const sep = isMobile ? <div aria-hidden className="my-1 h-px bg-white/[0.06]" /> : null;
 
   const sectionLabel = (label: string) => (
     <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -342,26 +344,22 @@ export function AccountMenu({
     <div className={isMobile ? undefined : "grid grid-cols-2 gap-x-2"}>
       {/* A row, not a second profile page. The sheet is for account actions;
           the banner, counts and avatar card already live on the profile tab. */}
-      <div
-        className="rizz-menu-group sticky top-0 z-10 col-span-2 -mx-1 flex items-center gap-3 rounded-2xl border border-[#c9ff3d]/20 bg-[#17181a] p-3 shadow-[0_10px_24px_-18px_rgba(0,0,0,0.9)]"
-      >
-        <span className="shrink-0 rounded-full p-[2px] ring-1 ring-[#c9ff3d]/55">
-          <UserAvatar
-            src={profile?.avatar_url}
-            fallback={initial}
-            size="lg"
-            presence={custom?.emoji ? undefined : selfPresence.status}
-          />
-        </span>
+      <div className="col-span-2 flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-transparent p-3">
+        <UserAvatar
+          src={profile?.avatar_url}
+          fallback={initial}
+          size="md"
+          presence={custom?.emoji ? undefined : selfPresence.status}
+        />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[20px] font-bold leading-tight text-white">{displayName}</p>
-          <p className="truncate text-[13px] text-white/45">@{username}</p>
+          <p className="truncate text-sm font-bold text-[#f2efe6]">{displayName}</p>
+          <p className="truncate text-xs text-muted-foreground">@{username}</p>
         </div>
         <Link
           to="/u/$username"
           params={{ username }}
           onClick={() => setOpen(false)}
-          className="inline-flex h-10 shrink-0 items-center rounded-full bg-[#c9ff3d] px-4 text-[13px] font-bold text-[#0b0b0c] transition-transform duration-120 active:scale-[0.97]"
+          className="shrink-0 rounded-full border border-white/12 px-3 py-1.5 text-[12px] font-semibold text-[#f2efe6]"
         >
           View profile
         </Link>
@@ -370,20 +368,21 @@ export function AccountMenu({
       {sep}
 
       {/* Status submenu */}
-      <div className={cn("rizz-menu-group mt-3", !isMobile && "col-span-2")} style={{ animationDelay: "20ms" }}>
+      <div className={cn("mt-1", !isMobile && "col-span-2")}>
         <button
           type="button"
           onClick={() => setStatusExpanded((prev) => !prev)}
           aria-expanded={statusExpanded}
           aria-label={`Status, ${statusShortLabel(selfPresence.status)}`}
-          className="flex h-[52px] w-full items-center gap-3 rounded-2xl border border-white/[0.07] bg-[#141416] px-4 text-[16px] transition-transform duration-120 active:scale-[0.98] motion-reduce:active:scale-100"
+          className={rowCls}
         >
-          <span className="grid shrink-0 place-items-center" aria-hidden>
-            <StatusIcon status={selfPresence.status} size={12} />
+          <span
+            className="grid h-7 w-7 shrink-0 place-items-center"
+            aria-hidden
+          >
+            <StatusIcon status={selfPresence.status} size={10} />
           </span>
-          <span className="min-w-0 flex-1 truncate text-left text-[16px] font-semibold text-[#f4f4f2]">
-            Status
-          </span>
+          <span className="min-w-0 flex-1 truncate text-left font-medium">Status</span>
           <span className="flex min-w-0 shrink-0 items-center gap-1 text-xs text-muted-foreground">
             {custom?.emoji ? (
               <StatusEmoji emoji={custom.emoji} size={14} />
@@ -472,14 +471,7 @@ export function AccountMenu({
       {sep}
 
       {/* Group 1: destinations — left column on desktop. */}
-      <div
-        className={cn(
-          "rizz-menu-group divide-y divide-white/[0.06] overflow-hidden",
-          isMobile ? "rounded-2xl border border-white/[0.07] bg-[#141416]" : "space-y-0.5",
-          !isMobile && "col-start-1 row-start-3 self-start",
-        )}
-        style={{ animationDelay: "40ms" }}
-      >
+      <div className={cn("space-y-0.5", !isMobile && "col-start-1 row-start-3 self-start")}>
         {!isMobile && sectionLabel("Account")}
         {destRow("/u/$username", { username }, UserIcon, "View profile")}
         {/* Badges are worn by this account, so they belong to the account menu. */}
@@ -492,11 +484,9 @@ export function AccountMenu({
       {/* Group 2 + 3: the right column on desktop, one list on a phone. */}
       <div
         className={cn(
-          "rizz-menu-group divide-y divide-white/[0.06] overflow-hidden",
-          isMobile ? "rounded-2xl border border-white/[0.07] bg-[#141416]" : "space-y-0.5",
+          "space-y-0.5",
           !isMobile && "col-start-2 row-start-3 self-start border-l border-white/[0.06] pl-2",
         )}
-        style={{ animationDelay: "80ms" }}
       >
         {!isMobile && sectionLabel("More")}
         <button
@@ -561,13 +551,7 @@ export function AccountMenu({
       </div>
 
       {/* Group 4: sign out, pinned to the bottom of the panel */}
-      <div
-        className={cn(
-          "rizz-menu-group",
-          isMobile ? "mt-3 rounded-2xl border border-[#ff5d5d]/40 bg-[#ff5d5d]/[0.08] p-1" : "col-span-2 mt-1 border-t border-white/[0.06] pt-1",
-        )}
-        style={{ animationDelay: "120ms" }}
-      >
+      <div className={cn(!isMobile && "col-span-2 mt-1 border-t border-white/[0.06] pt-1")}>
         {confirmSignOut ? (
           <div className="flex min-h-12 items-center justify-between gap-2 px-3" role="alert">
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#ff5d5d]">
@@ -652,7 +636,9 @@ export function AccountMenu({
               if (!next) resetSub();
             }}
             title="Your account"
-            className="account-sheet max-h-[85dvh] overflow-y-auto rounded-t-[24px] border border-[#c9ff3d]/15 bg-[#111113] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            showClose
+            className="account-sheet max-h-[85dvh]"
+            bodyClassName="px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {body}
           </SwipeSheet>
