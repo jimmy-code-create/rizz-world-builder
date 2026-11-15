@@ -47,6 +47,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { SwipeSheet } from "@/components/ui/swipe-sheet";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
 import { CreateSheet, type CreateAction } from "@/components/create/CreateSheet";
@@ -776,17 +777,15 @@ export function AppShell() {
       )}
 
       {/* Mobile "More" drawer */}
-      <Sheet
+      <SwipeSheet
         open={moreOpen}
         onOpenChange={(open) => {
           setMoreOpen(open);
           if (!open) setEditShortcuts(false);
         }}
+        title={t("everything_on_rizz")}
+        className="bg-[#0b0b0c] max-h-[85dvh] overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
-        <SheetContent
-          side="bottom"
-          className="border-border bg-card rounded-t-3xl max-h-[85dvh] overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
-        >
           <SheetHeader className="text-left pt-2 pr-8">
             <div className="flex items-center justify-between gap-3">
               <SheetTitle className="font-display text-xl">{t("everything_on_rizz")}</SheetTitle>
@@ -937,8 +936,7 @@ export function AppShell() {
           >
             <LogOut className="h-4 w-4" /> {t("sign_out")}
           </button>
-        </SheetContent>
-      </Sheet>
+      </SwipeSheet>
 
       <AlertDialog open={mobileSignOutConfirm} onOpenChange={setMobileSignOutConfirm}>
         <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">

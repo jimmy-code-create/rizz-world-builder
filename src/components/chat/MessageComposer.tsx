@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { ArrowUp, ImagePlus, Mic, Plus, Smile, X } from "lucide-react";
+import { ArrowUp, ImagePlus, Mic, Plus, Smile, Sticker, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ComposerInput, type ComposerInputHandle } from "@/components/chat/ComposerInput";
 import type { EmojiTokenParts } from "@/lib/emoji-token";
@@ -632,15 +632,16 @@ export function ChatComposer({
               openPanel("picker", "stickers");
             }}
             disabled={disabled}
-            aria-label="Your stickers"
-            title="Stickers"
+            aria-label="Stickers and GIFs"
+            title="Stickers and GIFs"
             aria-expanded={panel === "picker"}
             className={cn(
-              "chat-composer-avatar shrink-0 rounded-full",
+              "chat-composer-avatar shrink-0 rounded-full text-primary",
               panel === "picker" && "chat-composer-avatar--active",
             )}
           >
-            {avatarUrl ? <img src={avatarUrl} alt="" /> : <span aria-hidden="true">+</span>}
+            {/* The dock's own mark, not the member's face: this opens art, not identity. */}
+            <Sticker className="h-[18px] w-[18px]" strokeWidth={2} />
           </button>
 
           {(!allowVoice || canSendNow) && !recording ? (

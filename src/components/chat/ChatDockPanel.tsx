@@ -454,7 +454,11 @@ const ChatDockPanelImpl = ({
   }, [available.data]);
 
   const emojiPacks = useMemo(() => {
-    const packs: { id: string; label: string }[] = [{ id: "default", label: "Default" }];
+    const packs: { id: string; label: string }[] = [
+      { id: "recent", label: "Recent" },
+      { id: "favorites", label: "Favourites" },
+      { id: "default", label: "Default" },
+    ];
     if ((available.data?.private ?? []).length > 0) packs.push({ id: "mine", label: "Mine" });
     for (const realm of available.data?.realms ?? []) {
       const row = realm as { id: string; name?: string | null; emojis?: unknown[] };
@@ -669,6 +673,19 @@ const ChatDockPanelImpl = ({
             </p>
             <p className="text-[11px] text-muted-foreground">Tap to attach</p>
           </div>
+          {recentPhotos.length === 0 && (
+            // Nothing imported yet: ask once, plainly, instead of opening an empty
+            // grid and leaving the member to guess.
+            <button
+              type="button"
+              onClick={onPhotos}
+              disabled={disabled}
+              className="mx-2 mb-1 flex items-center gap-2 rounded-[12px] border border-primary/30 bg-primary/[0.07] px-3 py-2 text-left text-[12px] font-semibold text-primary disabled:opacity-40"
+            >
+              <ImagePlus className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Allow access to your photos
+            </button>
+          )}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
             <div className="grid grid-cols-4 gap-1.5">
               <button
@@ -808,7 +825,13 @@ const ChatDockPanelImpl = ({
                   {gridFor(stickerCells)}
                 </>
               ) : (
-                gridFor(emojiCells)
+                gridFor(
+                  tab === "emoji" && emojiPack === "recent"
+                    ? recentCells.filter((cell) => cell.kind === "emoji" || cell.kind === "realm")
+                    : tab === "emoji" && emojiPack === "favorites"
+                      ? favoriteCells.filter((cell) => cell.kind === "emoji" || cell.kind === "realm")
+                      : emojiCells,
+                )
               ))}
           </div>
           <div className="grid shrink-0 grid-cols-5 gap-0.5 border-t border-border px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-1">
