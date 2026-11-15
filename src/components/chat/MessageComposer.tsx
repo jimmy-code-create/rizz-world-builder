@@ -579,7 +579,8 @@ export function ChatComposer({
                   type="button"
                   onClick={() => {
                     onEmoji?.();
-                    openPanel("picker", pickerTab);
+                    // The emoji button always lands on emoji, whatever was open last.
+                    openPanel("picker", "emoji");
                   }}
                   disabled={disabled}
                   aria-label="Emoji, GIFs and stickers"
@@ -687,7 +688,7 @@ export function ChatComposer({
 
       <div
         className={cn(
-          "chat-dock-shell shrink-0 overflow-hidden transition-[height] duration-[180ms] ease-out motion-reduce:transition-none",
+          "chat-dock-shell shrink-0 overflow-hidden max-h-[38dvh] transition-[height] duration-[180ms] ease-out motion-reduce:transition-none",
           panel ? "border-t border-border bg-background" : "border-t-0",
         )}
         style={{ height: panel ? panelHeight : 0, pointerEvents: panel ? "auto" : "none" }}

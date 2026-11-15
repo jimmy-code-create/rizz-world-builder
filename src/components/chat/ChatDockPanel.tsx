@@ -17,6 +17,7 @@ import {
   Heart,
   Image as ImageIcon,
   ImagePlus,
+  Plus,
   Loader2,
   Search,
   Smile,
@@ -380,6 +381,8 @@ const ChatDockPanelImpl = ({
   // The emoji tab groups by emoji set (default, mine, each realm), never by
   // sticker feelings; those chips belong to GIFs and stickers only.
   const [emojiPack, setEmojiPack] = useState("default");
+  // Horizontal swipe moves between the five tabs; the grids keep vertical scroll.
+  const tabSwipe = useRef<{ x: number; y: number } | null>(null);
   const [pack, setPack] = useState<StickerPack>("noto");
   const [panelRecents, setPanelRecents] = useState<string[]>([]);
   const [gifs, setGifs] = useState<GifResult[]>([]);
@@ -647,6 +650,16 @@ const ChatDockPanelImpl = ({
                   {item.label}
                 </button>
               ))}
+              {onManageEmoji && (
+                <button
+                  type="button"
+                  onClick={onManageEmoji}
+                  className="chat-dock-chip"
+                  aria-label="Add your own emoji"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add
+                </button>
+              )}
             </div>
           ) : tab === "stickers" || tab === "gifs" ? (
             <div className="chat-dock-chips shrink-0">
@@ -673,9 +686,9 @@ const ChatDockPanelImpl = ({
             </p>
             <p className="text-[11px] text-muted-foreground">Tap to attach</p>
           </div>
-          {recentPhotos.length === 0 && (
-            // Nothing imported yet: ask once, plainly, instead of opening an empty
-            // grid and leaving the member to guess.
+          {(
+            // The import door is always offered: a browser only gets photo access
+            // through this picker, so it cannot be buried behind an empty grid.
             <button
               type="button"
               onClick={onPhotos}
@@ -683,7 +696,7 @@ const ChatDockPanelImpl = ({
               className="mx-2 mb-1 flex items-center gap-2 rounded-[12px] border border-primary/30 bg-primary/[0.07] px-3 py-2 text-left text-[12px] font-semibold text-primary disabled:opacity-40"
             >
               <ImagePlus className="h-4 w-4 shrink-0" aria-hidden="true" />
-              Allow access to your photos
+              {recentPhotos.length === 0 ? "Allow access to your photos" : "Import from your photos"}
             </button>
           )}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
@@ -751,7 +764,26 @@ const ChatDockPanelImpl = ({
         </div>
       ) : (
         <>
-          <div className="min-h-0 flex-1">
+          <div
+            className="min-h-0 flex-1"
+            onTouchStart={(event) => {
+              const touch = event.touches[0];
+              tabSwipe.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+            }}
+            onTouchEnd={(event) => {
+              const start = tabSwipe.current;
+              tabSwipe.current = null;
+              const touch = event.changedTouches[0];
+              if (!start || !touch) return;
+              const dx = touch.clientX - start.x;
+              const dy = touch.clientY - start.y;
+              if (Math.abs(dx) < 56 || Math.abs(dy) > Math.abs(dx)) return;
+              const index = TABS.findIndex((item) => item.id === tab);
+              if (index < 0) return;
+              const next = TABS[(index + (dx < 0 ? 1 : TABS.length - 1)) % TABS.length];
+              if (next && next.id !== tab) onTabChange(next.id);
+            }}
+          >
             {tab === "gifs" && (!allowed ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
                   <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />

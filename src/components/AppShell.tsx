@@ -604,7 +604,7 @@ export function AppShell() {
       {!isConversation && (
         <header
           data-hidden={headerHidden}
-          className="shell-header glass-chrome chrome chrome-auto-hide md:hidden absolute inset-x-0 top-0 z-40 flex items-center gap-2 px-3 pb-2"
+          className="shell-header chrome chrome-auto-hide md:hidden absolute inset-x-0 top-0 z-40 flex items-center gap-2 border-b border-white/[0.06] bg-[#0b0b0c] px-3 pb-2"
           style={{
             minHeight: "var(--chrome-top)",
             paddingTop: "max(var(--safe-top), 0.5rem)",
@@ -686,7 +686,7 @@ export function AppShell() {
       {/* Mobile bottom nav — five slots, lime active tile, oversized create FAB.
           Matches the docked bar design: icon over label, one accent per row. */}
       {!isConversation && (
-        <nav className="shell-nav md:hidden z-30 shrink-0 border-t border-white/[0.06] bg-background/95 backdrop-blur-xl px-1.5 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
+        <nav className="shell-nav md:hidden z-30 shrink-0 border-t border-white/[0.06] bg-[#0b0b0c] px-1.5 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
           <div className="mx-auto flex max-w-[560px] items-center justify-between gap-0.5">
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
@@ -800,18 +800,6 @@ export function AppShell() {
             {editShortcuts && <p className="mt-1 text-xs text-muted-foreground">{t("pin_hint")}</p>}
           </SheetHeader>
 
-          {/* Search — opens the same command palette as ⌘K on desktop */}
-          <button
-            type="button"
-            onClick={() => {
-              setMoreOpen(false);
-              openSearch();
-            }}
-            className="mt-4 flex min-h-[48px] w-full items-center gap-2.5 rounded-2xl border border-border bg-surface-2/60 px-3.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Search className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 flex-1 truncate">{t("search_placeholder")}</span>
-          </button>
 
           {/* What's happening */}
           <Link

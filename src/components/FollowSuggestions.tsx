@@ -110,7 +110,7 @@ export function FollowSuggestions() {
     <section
       data-focus-hide
       aria-labelledby="suggested-for-you-heading"
-      className="mb-3 overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#0e0e11]"
+      className="mb-3 overflow-hidden rounded-[12px] border border-white/[0.06] bg-[#141416]"
     >
       <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3.5 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
@@ -165,7 +165,7 @@ export function FollowSuggestions() {
               key={p.id}
               data-suggestion-card
               role="listitem"
-              className="flex w-[124px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-[12px] border border-white/[0.07] bg-white/[0.02] px-2 py-2.5"
+              className="flex w-[120px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-[10px] border border-white/[0.05] bg-white/[0.03] px-2 py-2.5"
             >
               <span
                 className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/10"
@@ -204,7 +204,7 @@ export function FollowSuggestions() {
                 onClick={() => followMut.mutate(p.id)}
                 disabled={followMut.isPending}
                 aria-label={`Follow @${p.username}`}
-                className="mt-0.5 inline-flex h-9 w-full items-center justify-center gap-1 rounded-full border border-white/25 px-2 text-[11.5px] font-semibold text-zinc-100 transition-colors hover:border-[#c9ff3d]/50 hover:bg-[#c9ff3d]/10 hover:text-[#c9ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-40"
+                className="mt-0.5 inline-flex h-9 w-full items-center justify-center gap-1 rounded-full bg-[#c9ff3d]/12 px-2 text-[11.5px] font-bold text-[#c9ff3d] transition-colors hover:bg-[#c9ff3d]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-40"
               >
                 {following ? (
                   <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />

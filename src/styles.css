@@ -5288,13 +5288,26 @@ body {
   object-fit: cover;
 }
 
-/* Lime ring while either panel is open, drawn outside the photo so it reads on
-   dark and light avatars alike. */
+/* While a panel is open the mark glows gently: no ring, no hard outline. */
 .chat-composer-avatar--active {
-  border-color: var(--primary);
-  box-shadow:
-    0 0 0 2px var(--background),
-    0 0 0 4px var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  animation: chat-dock-glow 2600ms ease-in-out infinite;
+}
+
+@keyframes chat-dock-glow {
+  0%, 100% {
+    box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 34%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-composer-avatar--active {
+    animation: none;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 26%, transparent);
+  }
 }
 
 .chat-dock-shell {
@@ -5367,6 +5380,7 @@ body {
   height: 100%;
   place-items: center;
   border-radius: 8px;
+  contain: layout paint style;
   -webkit-tap-highlight-color: transparent;
   transition: transform 90ms ease;
 }
