@@ -110,20 +110,20 @@ export function FollowSuggestions() {
     <section
       data-focus-hide
       aria-labelledby="suggested-for-you-heading"
-      className="mb-4 overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#0e0e11] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+      className="mb-3 overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#0e0e11]"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3.5">
+      <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3.5 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c9ff3d]" />
           <h3
             id="suggested-for-you-heading"
-            className="truncate font-display text-[15px] font-bold tracking-[-0.01em] text-zinc-100"
+            className="truncate font-display text-[13px] font-bold tracking-[-0.01em] text-zinc-100"
           >
             {t("suggested_for_you")}
           </h3>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <span className="mr-1 font-mono text-[11px] tabular-nums tracking-[0.12em] text-zinc-500">
+          <span className="mr-0.5 font-mono text-[10px] tabular-nums tracking-[0.1em] text-zinc-500">
             {String(data.length).padStart(2, "0")}
           </span>
           <button
@@ -131,7 +131,7 @@ export function FollowSuggestions() {
             onClick={() => nudge(-1)}
             disabled={!edges.left}
             aria-label="Previous suggestions"
-            className="grid h-11 w-11 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
+            className="grid h-9 w-9 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -140,7 +140,7 @@ export function FollowSuggestions() {
             onClick={() => nudge(1)}
             disabled={!edges.right}
             aria-label="More suggestions"
-            className="grid h-11 w-11 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
+            className="grid h-9 w-9 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
           >
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -152,7 +152,7 @@ export function FollowSuggestions() {
         onScroll={measure}
         role="list"
         aria-label={t("suggested_for_you")}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-3.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {data.map((p) => {
           const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
@@ -165,10 +165,10 @@ export function FollowSuggestions() {
               key={p.id}
               data-suggestion-card
               role="listitem"
-              className="flex w-[172px] shrink-0 snap-start flex-col items-center gap-2 rounded-[14px] border border-white/[0.07] bg-white/[0.02] px-3 py-4"
+              className="flex w-[124px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-[12px] border border-white/[0.07] bg-white/[0.02] px-2 py-2.5"
             >
               <span
-                className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/10"
+                className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/10"
                 style={{ background: p.avatar_url ? "#141418" : palette.bg }}
                 aria-hidden={p.avatar_url ? undefined : true}
               >
@@ -181,7 +181,7 @@ export function FollowSuggestions() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-[22px] font-semibold" style={{ color: palette.text }}>
+                  <span className="text-[17px] font-semibold" style={{ color: palette.text }}>
                     {initial}
                   </span>
                 )}
@@ -191,12 +191,12 @@ export function FollowSuggestions() {
                 params={{ username: p.username ?? "" }}
                 className="w-full text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
               >
-                <p className="truncate text-[13.5px] font-semibold leading-tight text-zinc-100">
+                <p className="truncate font-display text-[12.5px] font-bold leading-tight text-zinc-100">
                   {p.display_name || p.username}
                 </p>
-                <p className="mt-0.5 truncate text-[11.5px] text-zinc-500">@{p.username}</p>
+                <p className="mt-0.5 truncate text-[10.5px] text-zinc-500">@{p.username}</p>
               </Link>
-              <p className="line-clamp-1 h-[13px] w-full text-center text-[10.5px] text-[#c9ff3d]/70">
+              <p className="line-clamp-1 h-[12px] w-full text-center text-[10px] text-[#c9ff3d]/70">
                 {shared.length > 0 ? shared.join(" / ") : "\u00a0"}
               </p>
               <button
@@ -204,12 +204,12 @@ export function FollowSuggestions() {
                 onClick={() => followMut.mutate(p.id)}
                 disabled={followMut.isPending}
                 aria-label={`Follow @${p.username}`}
-                className="mt-0.5 inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border border-white/25 px-3 text-[12.5px] font-semibold text-zinc-100 transition-colors hover:border-[#c9ff3d]/50 hover:bg-[#c9ff3d]/10 hover:text-[#c9ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-40"
+                className="mt-0.5 inline-flex h-9 w-full items-center justify-center gap-1 rounded-full border border-white/25 px-2 text-[11.5px] font-semibold text-zinc-100 transition-colors hover:border-[#c9ff3d]/50 hover:bg-[#c9ff3d]/10 hover:text-[#c9ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-40"
               >
                 {following ? (
-                  <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden="true" />
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />
                 ) : (
-                  <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden="true" />
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />
                 )}
                 {following ? "Following" : "Follow"}
               </button>

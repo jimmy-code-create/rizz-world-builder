@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { SwipeSheet } from "@/components/ui/swipe-sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
 
@@ -98,7 +98,6 @@ export function AccountMenu({
   const [accounts, setAccounts] = useState<SavedAccount[]>(() =>
     typeof window === "undefined" ? [] : loadAccounts(),
   );
-  const dragStart = useRef<number | null>(null);
 
   const userId = user?.id ?? null;
   const username = profile?.username ?? null;
@@ -685,37 +684,17 @@ export function AccountMenu({
           <button type="button" data-tour="account" onClick={() => { resetSub(); setOpen(true); }} aria-label={triggerLabel} className={triggerClass}>
             {triggerInner}
           </button>
-          <Sheet
+          <SwipeSheet
             open={open}
             onOpenChange={(next) => {
               setOpen(next);
               if (!next) resetSub();
             }}
+            title="Your account"
+            className="account-sheet max-h-[85dvh] overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
-            <SheetContent
-              side="bottom"
-              className="account-sheet max-h-[85dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#141416] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
-            >
-              <SheetTitle className="sr-only">Your account</SheetTitle>
-              <div
-                onTouchStart={(event) => {
-                  dragStart.current = event.touches[0]?.clientY ?? null;
-                }}
-                onTouchEnd={(event) => {
-                  if (dragStart.current === null) return;
-                  const end = event.changedTouches[0]?.clientY ?? dragStart.current;
-                  if (end - dragStart.current > 120) {
-                    setOpen(false);
-                    resetSub();
-                  }
-                  dragStart.current = null;
-                }}
-              >
-                <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-white/25" aria-hidden />
-                {body}
-              </div>
-            </SheetContent>
-          </Sheet>
+            {body}
+          </SwipeSheet>
         </>
       ) : (
         <DropdownMenu

@@ -108,7 +108,20 @@ export function StickerMedia({
         className,
       )}
     >
-      {status === "loading" && (
+      {/* The still shows from the first frame: a slow or blocked video must
+          never leave a grey shimmer where the sticker art should be. */}
+      {poster && status !== "loaded" && (
+        <img
+          src={poster}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-contain"
+        />
+      )}
+      {status === "loading" && !poster && (
         <span className="sticker-shimmer pointer-events-none absolute inset-0" aria-hidden="true" />
       )}
 

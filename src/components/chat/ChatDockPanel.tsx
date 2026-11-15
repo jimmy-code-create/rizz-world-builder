@@ -377,6 +377,9 @@ const ChatDockPanelImpl = ({
   const deferredQuery = useDeferredValue(query);
   const term = deferredQuery.trim().toLowerCase();
   const [category, setCategory] = useState<Category | null>(null);
+  // The emoji tab groups by emoji set (default, mine, each realm), never by
+  // sticker feelings; those chips belong to GIFs and stickers only.
+  const [emojiPack, setEmojiPack] = useState("default");
   const [pack, setPack] = useState<StickerPack>("noto");
   const [panelRecents, setPanelRecents] = useState<string[]>([]);
   const [gifs, setGifs] = useState<GifResult[]>([]);
@@ -396,6 +399,8 @@ const ChatDockPanelImpl = ({
     preloadStickerPack(pack);
   }, [pack, tab]);
 
+  const gifTerm = term || (tab === "gifs" && category ? CATEGORY_TAGS[category][0] : "");
+
   useEffect(() => {
     if (mode !== "picker" || tab !== "gifs") return;
     if (!gifKey) {
@@ -409,14 +414,14 @@ const ChatDockPanelImpl = ({
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
-        const endpoint = term
+        const endpoint = gifTerm
           ? "https://api.giphy.com/v1/gifs/search"
           : "https://api.giphy.com/v1/gifs/trending";
         const params = new URLSearchParams({
           api_key: gifKey,
           limit: "32",
           rating: "pg-13",
-          ...(term ? { q: term } : {}),
+          ...(gifTerm ? { q: gifTerm } : {}),
         });
         const response = await fetch(`${endpoint}?${params}`, { signal: controller.signal });
         if (!response.ok) throw new Error("GIFs unavailable");
@@ -434,7 +439,7 @@ const ChatDockPanelImpl = ({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [gifKey, mode, tab, term]);
+  }, [gifKey, mode, tab, gifTerm]);
 
   // Recents and favorites can hold any realm token, so the lookup is fetched
   // whenever the panel opens rather than only on the Emoji tab.
@@ -448,15 +453,18 @@ const ChatDockPanelImpl = ({
     return map;
   }, [available.data]);
 
-  const emojiCells = useMemo<PanelCell[]>(() => {
-    let smileys = term ? searchSmileys(term) : SMILEY_EMOJI;
-    if (category) {
-      const tags = CATEGORY_TAGS[category];
-      smileys = smileys.filter((smiley) => {
-        const haystack = `${smiley.name} ${smiley.tags ?? ""}`.toLowerCase();
-        return tags.some((tag) => haystack.includes(tag));
-      });
+  const emojiPacks = useMemo(() => {
+    const packs: { id: string; label: string }[] = [{ id: "default", label: "Default" }];
+    if ((available.data?.private ?? []).length > 0) packs.push({ id: "mine", label: "Mine" });
+    for (const realm of available.data?.realms ?? []) {
+      const row = realm as { id: string; name?: string | null; emojis?: unknown[] };
+      if ((row.emojis ?? []).length > 0) packs.push({ id: `realm:${row.id}`, label: row.name ?? "Realm" });
     }
+    return packs;
+  }, [available.data]);
+
+  const emojiCells = useMemo<PanelCell[]>(() => {
+    let smileys = emojiPack === "default" ? (term ? searchSmileys(term) : SMILEY_EMOJI) : [];
     const cells: PanelCell[] = smileys.map((smiley) => ({
       kind: "emoji",
       key: `u:${smiley.char}`,
@@ -465,6 +473,7 @@ const ChatDockPanelImpl = ({
       char: smiley.char,
     }));
     for (const emoji of available.data?.private ?? []) {
+      if (emojiPack !== "mine") continue;
       if (term && !emoji.name.toLowerCase().includes(term)) continue;
       cells.push({
         kind: "realm",
@@ -475,6 +484,7 @@ const ChatDockPanelImpl = ({
       });
     }
     for (const realm of available.data?.realms ?? []) {
+      if (emojiPack !== `realm:${realm.id}`) continue;
       for (const emoji of realm.emojis) {
         if (term && !emoji.name.toLowerCase().includes(term)) continue;
         cells.push({
@@ -487,12 +497,19 @@ const ChatDockPanelImpl = ({
       }
     }
     return cells;
-  }, [available.data, category, term]);
+  }, [available.data, emojiPack, term]);
 
   const stickerCells = useMemo<PanelCell[]>(
     () =>
       stickersForPack(pack)
-        .filter((sticker) => !term || `${sticker.label} ${pack}`.toLowerCase().includes(term))
+        .filter((sticker) => {
+          const haystack = `${sticker.label} ${pack}`.toLowerCase();
+          if (category) {
+            const tags = CATEGORY_TAGS[category];
+            if (!tags.some((tag) => haystack.includes(tag))) return false;
+          }
+          return !term || haystack.includes(term);
+        })
         .map((sticker) => ({
           kind: "sticker",
           key: `s:${sticker.id}`,
@@ -614,18 +631,33 @@ const ChatDockPanelImpl = ({
               </button>
             ) : null}
           </div>
-          <div className={cn("chat-dock-chips shrink-0", tab !== "emoji" && "hidden")}>
-            {CATEGORIES.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setCategory((current) => (current === item ? null : item))}
-                className={cn("chat-dock-chip", category === item && "is-active")}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
+          {tab === "emoji" && emojiPacks.length > 1 ? (
+            <div className="chat-dock-chips shrink-0">
+              {emojiPacks.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setEmojiPack(item.id)}
+                  className={cn("chat-dock-chip", emojiPack === item.id && "is-active")}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ) : tab === "stickers" || tab === "gifs" ? (
+            <div className="chat-dock-chips shrink-0">
+              {CATEGORIES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setCategory((current) => (current === item ? null : item))}
+                  className={cn("chat-dock-chip", category === item && "is-active")}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </>
       ) : null}
 

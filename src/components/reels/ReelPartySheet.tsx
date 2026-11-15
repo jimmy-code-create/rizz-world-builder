@@ -14,12 +14,8 @@ import { Button } from "@/components/ui/button";
 import { InteractiveAvatar } from "@/components/ui/avatar";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { SheetClose } from "@/components/ui/sheet";
+import { SwipeSheet } from "@/components/ui/swipe-sheet";
 import {
   normalizeReelPartyCode,
   reelPartyInviteUrl,
@@ -85,18 +81,15 @@ export function ReelPartySheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        hideClose
-        className="glass-strong max-h-[88dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(1rem,env(safe-area-inset-bottom))]"
-      >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
+    <SwipeSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Reel party"
+      className="max-h-[88dvh] overflow-y-auto bg-[#0b0b0c] pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <SheetTitle className="font-display text-xl text-white">
-              Reel party
-            </SheetTitle>
+            <h2 className="font-display text-xl text-white">Reel party</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               One screen, one playhead. Watch the reels together.
             </p>
@@ -295,7 +288,6 @@ export function ReelPartySheet({
             </p>
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+    </SwipeSheet>
   );
 }
