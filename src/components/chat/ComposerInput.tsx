@@ -272,7 +272,11 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
     const composing = useRef(false);
     // The last value we reported, so an external reset can be told apart from
     // our own echo (which must never rewrite the DOM mid-typing).
-    const lastEmitted = useRef(value);
+    // `null` until the field has taken the draft once. Seeding this with the
+    // initial value made the mount run below think the DOM already matched it,
+    // so a draft restored from storage stayed invisible: the state held text
+    // while the contenteditable rendered nothing.
+    const lastEmitted = useRef<string | null>(null);
     const resolveRef = useRef(resolveEmoji);
     resolveRef.current = resolveEmoji;
 
@@ -702,7 +706,7 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
         spellCheck
         enterKeyHint={enterKeyHint}
         data-placeholder={placeholder}
-        data-empty={value ? "false" : "true"}
+        data-empty={value.trim() ? "false" : "true"}
         data-composer-input="true"
         className={cn(
           "composer-input min-h-10 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words bg-transparent py-2 pr-1 text-[16px] leading-6",

@@ -274,7 +274,9 @@ function DMPage() {
     } catch {
       // Keep the composer usable when browser storage is disabled.
     }
-    setBody(saved);
+    // A draft of nothing but whitespace is what a stray newline leaves behind;
+    // restoring it hid the placeholder without putting any text in the field.
+    setBody(saved.trim() ? saved : "");
     setDraftReady(true);
   }, [draftKey]);
 
@@ -372,7 +374,7 @@ function DMPage() {
     if (!draftReady || !draftKey) return;
     const timer = window.setTimeout(() => {
       try {
-        if (body) window.localStorage.setItem(draftKey, body);
+        if (body.trim()) window.localStorage.setItem(draftKey, body);
         else window.localStorage.removeItem(draftKey);
       } catch {
         // Draft storage is best-effort; typing and sending do not depend on it.
