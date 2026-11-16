@@ -12,6 +12,16 @@ function AppErrorComponent({ error, reset }: { error: unknown; reset: () => void
       : typeof error === "string"
         ? error
         : "";
+  // First frames only: enough to name the chunk and position, short enough to
+  // read on a phone.
+  const frames =
+    error instanceof Error && error.stack
+      ? error.stack
+          .split("\n")
+          .slice(0, 4)
+          .map((line) => line.trim())
+          .join("\n")
+      : "";
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12 text-center">
@@ -20,6 +30,14 @@ function AppErrorComponent({ error, reset }: { error: unknown; reset: () => void
       <p className="mt-1 text-sm text-muted-foreground max-w-sm">
         {errorMessage || "Something unexpected happened. Try reloading."}
       </p>
+      {/* The message alone never says where it came from, and this build is still
+          being worked on: the first frames name the file and position, which is
+          the only way to find a crash that cannot be reproduced on a desk. */}
+      {frames && (
+        <pre className="mt-3 max-w-[92%] overflow-auto whitespace-pre-wrap break-all rounded-lg bg-black/40 p-2 text-left text-[10px] leading-snug text-muted-foreground/60">
+          {frames}
+        </pre>
+      )}
       <div className="mt-4 flex gap-2">
         <button
           type="button"

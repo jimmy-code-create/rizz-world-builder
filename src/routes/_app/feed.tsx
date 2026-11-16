@@ -17,6 +17,7 @@ import { TrendingTagsRail } from "@/components/TrendingTagsRail";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { FeedSideDiscussion } from "@/components/FeedSideDiscussion";
 import { RizzCat } from "@/components/RizzCat";
+import { SafeSection } from "@/components/SafeSection";
 import { formatNumber } from "@/lib/formatters";
 import { useI18n, tp } from "@/lib/i18n";
 import type { FeedPost } from "@/lib/posts";
@@ -157,9 +158,11 @@ function FeedPage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start w-full">
       <div className="xl:col-span-8 min-w-0 space-y-4">
-        <div className="flex justify-center">
-          <LiveNowChip onOpen={() => setLiveOpen(true)} />
-        </div>
+        <SafeSection name="Live now">
+          <div className="flex justify-center">
+            <LiveNowChip onOpen={() => setLiveOpen(true)} />
+          </div>
+        </SafeSection>
         {/* Compact greeting bar */}
         <div className="flex items-center justify-between pt-1 pb-1">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -184,15 +187,21 @@ function FeedPage() {
         </div>
 
         <SectionHeading title={t("stories")} tooltip={t("fresh_stories")} />
-        <div data-tour="stories" className="scroll-mt-24">
-          <StoriesStrip />
-        </div>
+        <SafeSection name="Stories">
+          <div data-tour="stories" className="scroll-mt-24">
+            <StoriesStrip />
+          </div>
+        </SafeSection>
 
-        <div id="feed-composer" data-tour="composer" className="scroll-mt-24">
-          <PostComposer />
-        </div>
+        <SafeSection name="Composer">
+          <div id="feed-composer" data-tour="composer" className="scroll-mt-24">
+            <PostComposer />
+          </div>
+        </SafeSection>
 
-        <TrendingTagsRail />
+        <SafeSection name="Trending tags">
+          <TrendingTagsRail />
+        </SafeSection>
 
         <SectionHeading title={t("latest_drops")} tooltip={t("drops_subtitle")} />
 
@@ -220,6 +229,7 @@ function FeedPage() {
           </div>
         )}
 
+        <SafeSection name="Posts">
         <div className="space-y-4">
           {shown.map((p, i) => (
             <div
@@ -228,10 +238,17 @@ function FeedPage() {
               style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
             >
               <PostCard post={p} liked={likes.data?.has(p.id)} />
-              {i === 2 && <div className="xl:hidden"><FollowSuggestions /></div>}
+              {i === 2 && (
+                <div className="xl:hidden">
+                  <SafeSection name="Suggested for you">
+                    <FollowSuggestions />
+                  </SafeSection>
+                </div>
+              )}
             </div>
           ))}
         </div>
+        </SafeSection>
 
         {remaining > 0 && (
           <div ref={sentinelRef} className="py-8 flex items-center justify-center">
