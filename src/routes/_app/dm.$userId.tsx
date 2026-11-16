@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
+  startTransition,
   useEffect,
   useMemo,
   useRef,
@@ -882,6 +883,13 @@ function DMPage() {
             replyId: index === 0 ? (reply?.id ?? null) : null,
           }))
         : [{ draft: null, body: text, replyId: reply?.id ?? null }];
+    // Empty the field on this frame, not after the rows and the cache write are
+    // built: the tap has to feel like it landed. Every local above is already
+    // captured, and files were uploaded when they were picked.
+    setBody("");
+    setCaret(0);
+    setReplyTo(null);
+    setPendingFiles([]);
     const optimistic: CachedDirectMessage[] = groups.map(({ draft, body: rowBody, replyId }) => {
       const pendingId = `pending-${crypto.randomUUID()}`;
       if (replyId) pendingReplyRef.current.set(pendingId, replyId);
@@ -908,12 +916,6 @@ function DMPage() {
       ...optimistic,
     ]);
 
-    // Clear the box immediately; the optimistic rows are already on screen and
-    // every file was uploaded as soon as it was picked.
-    setBody("");
-    setCaret(0);
-    setReplyTo(null);
-    setPendingFiles([]);
     optimistic.forEach((row, index) => {
       void deliverPendingMessage(
         row.id,
@@ -2506,8 +2508,16 @@ function DMPage() {
         <ChatComposer
           value={body}
           onChange={(next, nextCaret) => {
-            setBody(next);
-            setCaret(nextCaret);
+            // The contenteditable paints the character itself, so the field is
+            // already correct before React runs. Marking the page update
+            // non-urgent stops a re-render of this whole route from sitting
+            // between two keystrokes: the next key interrupts it instead of
+            // queueing behind it. That is the difference between typing in a
+            // short thread and typing in a long one.
+            startTransition(() => {
+              setBody(next);
+              setCaret(nextCaret);
+            });
             broadcastTyping();
           }}
           onSend={send}

@@ -435,24 +435,9 @@
   -webkit-user-select: none;
 }
 
-/* The field's placeholder. A contenteditable has no `placeholder` attribute,
-   so the empty state is drawn from the pseudo-element; `data-empty` tracks
-   emptiness while `data-placeholder` holds the text to draw. */
-.composer-input {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  outline: none;
-}
-
-.composer-input[data-empty="true"]::before {
-  content: attr(data-placeholder);
-  color: #8c8c8c;
-  pointer-events: none;
-  user-select: none;
-  /* In flow, but only rendered while the field is empty, so it can never end
-     up in the value the message is built from. */
-}
+/* The composer's own placeholder rules used to live here. They moved to
+   src/styles.css: this file only loads with the emoji/GIF picker chunks, so
+   the placeholder did not exist until a picker had been opened at least once. */
 
 /* ------------------------------------------------------------- preview */
 

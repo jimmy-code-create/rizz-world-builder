@@ -5922,3 +5922,26 @@ body {
     animation: none;
   }
 }
+
+/* ------------------------------------------------------- composer field ---- */
+/* A contenteditable has no `placeholder` attribute, so the empty state is drawn
+   from the pseudo-element: `data-empty` tracks emptiness, `data-placeholder`
+   holds the text. These rules live here, in the stylesheet the app always
+   loads, because they were in the emoji picker's CSS and only arrived once a
+   picker chunk had been opened — before that, the composer drew no placeholder
+   at all. */
+.composer-input {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  outline: none;
+}
+
+.composer-input[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: #8c8c8c;
+  pointer-events: none;
+  user-select: none;
+  /* In flow, but only rendered while the field is empty, so it can never end up
+     in the value the message is built from. */
+}

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, Palette, Forward, CornerUpLeft } from "lucide-react";
@@ -946,8 +946,12 @@ function GroupRoom() {
           <ChatComposer
             value={body}
             onChange={(next, nextCaret) => {
-              setBody(next);
-              setCaret(nextCaret);
+              // Same reason as the DM composer: keep the keystroke on the input
+              // and let the page re-render only when the browser is idle.
+              startTransition(() => {
+                setBody(next);
+                setCaret(nextCaret);
+              });
             }}
             onSend={() => void send()}
             onPickEmoji={(token) => {
