@@ -41,6 +41,24 @@ type Status = "loading" | "ready" | "missing" | "failed" | "unsupported";
 
 const LOAD_TIMEOUT_MS = 15_000;
 
+/**
+ * Whether this browser can draw WebGL at all. Kept as its own function because
+ * the effect asks twice (mount, and again after a retry) and the answer must be
+ * the same both times.
+ */
+function webglAvailable() {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(
+      canvas.getContext("webgl2") ??
+        canvas.getContext("webgl") ??
+        canvas.getContext("experimental-webgl"),
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Applies the saved look to a loaded model. */
 function applyAvatarConfig(
   meshes: any[],

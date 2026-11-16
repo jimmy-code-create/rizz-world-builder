@@ -1016,43 +1016,6 @@
   white-space: nowrap;
 }
 
-/* The suggestions panel's frame: a 12s gradient sweep around the box, so the
-   section reads as its own object without strobing the feed. The inner card
-   paints the real surface; this element is only the 2px border around it. */
-.suggest-frame {
-  position: relative;
-  padding: 2px;
-  background: linear-gradient(
-      110deg,
-      #2a2d1f 0%,
-      #c9ff3d 18%,
-      #23262b 38%,
-      #3a3f22 58%,
-      #c9ff3d 78%,
-      #2a2d1f 100%
-    )
-    0 0 / 300% 300%;
-  animation: suggest-frame-sweep 12s linear infinite;
-}
-@keyframes suggest-frame-sweep {
-  from {
-    background-position: 0% 50%;
-  }
-  to {
-    background-position: 300% 50%;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .suggest-frame {
-    animation: none;
-    background-position: 0% 50%;
-  }
-}
-/* The app has its own reduced-motion switch, separate from the OS one. */
-[data-reduced-motion="true"] .suggest-frame {
-  animation: none;
-  background-position: 0% 50%;
-}
 .chat-header__action {
   position: relative;
   display: grid;
