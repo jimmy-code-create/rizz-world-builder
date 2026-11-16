@@ -14,14 +14,49 @@ import { outfitStyleFor } from "./clothes";
 export const AVATAR_MODEL_URL = "/models/avatar.glb";
 
 /**
- * The two rigged people. Both are Mixamo-named rigs, so the arms-down pose and
- * the framing maths work on either; they differ in what they carry — the man has
- * named skin/hair/outfit materials, the woman ships one baked atlas.
+ * Which body to show.
+ *
+ * The wardrobe only exists on bodies that ship separate garment meshes, so each
+ * entry says whether it can be dressed. The scans are photogrammetry: lovely
+ * faces, one baked surface, nothing to recolour — they are here as poses, not as
+ * a wardrobe.
  */
-export const AVATAR_MODELS: Record<AvatarGender, string> = {
-  male: "/models/avatar.glb",
-  female: "/models/girl.glb",
-};
+export const AVATAR_BODIES = [
+  { id: "man", name: "Man", url: "/models/avatar.glb", gender: "male", wardrobe: true, yaw: 0 },
+  {
+    id: "korean",
+    name: "Korean",
+    url: "/models/man-korean.glb",
+    gender: "male",
+    wardrobe: true,
+    yaw: 0,
+  },
+  // The scan was captured side-on, so it carries the turn that squares it up to
+  // the camera. It also arrives in one baked surface: nothing to recolour, and
+  // no garments to swap, so it is a pose rather than a wardrobe.
+  {
+    id: "scan",
+    name: "Scan",
+    url: "/models/man-scan.glb",
+    gender: "male",
+    wardrobe: false,
+    yaw: -1.2,
+  },
+  {
+    id: "woman",
+    name: "Woman",
+    url: "/models/girl.glb",
+    gender: "female",
+    wardrobe: false,
+    yaw: 0,
+  },
+] as const;
+
+export type AvatarBodyId = (typeof AVATAR_BODIES)[number]["id"];
+
+export function bodyFor(id: string | null | undefined) {
+  return AVATAR_BODIES.find((entry) => entry.id === id) ?? AVATAR_BODIES[0];
+}
 
 export type AvatarGender = "male" | "female";
 
@@ -88,6 +123,8 @@ export const DEFAULT_HAIR = "#2b1d14";
 export const DEFAULT_OUTFIT = "#1b1b1f";
 
 export type Avatar3DConfig = {
+  /** Which body to show: one of `AVATAR_BODIES`. */
+  body: AvatarBodyId;
   /** Which rigged person to show. */
   gender: AvatarGender;
   /** The wall behind them: one of `AVATAR_BACKGROUNDS`. */
@@ -109,6 +146,7 @@ export type Avatar3DConfig = {
 };
 
 export const DEFAULT_AVATAR: Avatar3DConfig = {
+  body: "man",
   gender: "male",
   background: "studio",
   skin: SKIN_TONES[2],
@@ -139,8 +177,14 @@ export function sanitizeAvatar3D(input: unknown): Avatar3DConfig {
       morphs[key] = clamp01(value);
     }
   }
+  // Saves that predate the body picker only carried a gender, so honour it
+  // rather than dropping everyone back to the default man.
+  const body = raw.body
+    ? bodyFor(raw.body as string)
+    : bodyFor(raw.gender === "female" ? "woman" : "man");
   return {
-    gender: raw.gender === "female" ? "female" : "male",
+    body: body.id,
+    gender: body.gender,
     background: backgroundFor(raw.background).id,
     skin: hex(raw.skin, DEFAULT_AVATAR.skin),
     hair: hex(raw.hair, DEFAULT_HAIR),

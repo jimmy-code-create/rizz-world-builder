@@ -29,7 +29,7 @@ import { dropArms } from "./pose";
 import { petPreviewCanvas } from "./pet";
 import { tintTexture } from "./tint";
 import {
-  AVATAR_MODELS,
+  bodyFor,
   backgroundFor,
   GLASSES_RE,
   HAIR_MATERIAL_RE,
@@ -58,8 +58,8 @@ const LOAD_TIMEOUT_MS = 15_000;
  * person, far enough that the two silhouettes never overlap.
  */
 const PET_FACING = 2.36; // three-quarter turn toward the camera
-const PET_OFFSET_X = 0.78;
-const PET_OFFSET_Z = 0.38;
+const PET_OFFSET_X = 0.66;
+const PET_OFFSET_Z = 0.46;
 /**
  * The shipped pose has the cat's head down, grooming its chest. Rolling the head
  * and neck bones back up makes it look at the viewer instead — the clip that
@@ -439,9 +439,7 @@ export function AvatarModel3D({
 
       let model: any = null;
       try {
-        const gltf = await new GLTFLoader().loadAsync(
-          AVATAR_MODELS[configRef.current.gender] ?? AVATAR_MODELS.male,
-        );
+        const gltf = await new GLTFLoader().loadAsync(bodyFor(configRef.current.body).url);
         if (disposed) return;
         model = gltf.scene;
         pivot = new THREE.Group();
@@ -465,6 +463,10 @@ export function AvatarModel3D({
         box.getSize(size);
         const scale = 2.0 / Math.max(0.0001, size.y);
         model.scale.setScalar(scale);
+        // A side-on scan needs turning before it is centred, or it walks off the
+        // stage once it faces the camera.
+        const yaw = bodyFor(configRef.current.body).yaw;
+        if (yaw) model.rotation.y += yaw;
         const centred = measureBounds(model, THREE);
         const centre = new THREE.Vector3();
         centred.getCenter(centre);
@@ -482,23 +484,28 @@ export function AvatarModel3D({
         // the middle of the box. This solves the distance from the model's own
         // height and the viewport's aspect, and runs again on resize.
         const fitHeight = placed.max.y - placed.min.y;
+        // Framing state, kept mutable: the pet arrives later and belongs in the
+        // shot, so the camera re-centres on the pair instead of on the person.
+        const view = { height: fitHeight, width: 0, x: 0.06, y: 0 };
         // A little wider than the body: the pet stands to the right of the feet,
         // and reserving that space up front means the view does not jump when
         // the (slower) cat model finishes loading.
         const fitWidth = Math.max(placed.max.x - placed.min.x, placed.max.z - placed.min.z) * 1.14;
         const lookX = 0.06;
         const centerY = (placed.max.y + placed.min.y) / 2;
+        view.width = fitWidth;
+        view.y = centerY;
         frameModel = () => {
           const vFov = (camera.fov * Math.PI) / 180;
-          const forHeight = fitHeight / 2 / Math.tan(vFov / 2);
-          const forWidth = fitWidth / 2 / (Math.tan(vFov / 2) * Math.max(0.0001, camera.aspect));
+          const forHeight = view.height / 2 / Math.tan(vFov / 2);
+          const forWidth = view.width / 2 / (Math.tan(vFov / 2) * Math.max(0.0001, camera.aspect));
           // Headroom and floor: a figure filling the whole frame is fine on a
           // plain backdrop, but standing in a scene it needs air above and
           // ground below, or it looks pasted on.
           const pad = backgroundFor(configRef.current.background).url ? 1.26 : 1.12;
           const distance = Math.max(forHeight, forWidth) * pad;
-          camera.position.set(lookX, centerY, distance);
-          camera.lookAt(lookX, centerY, 0);
+          camera.position.set(view.x, view.y, distance);
+          camera.lookAt(view.x, view.y, 0);
           camera.updateProjectionMatrix();
         };
         frameModel();
@@ -631,8 +638,8 @@ export function AvatarModel3D({
               // as a grey boulder. Scale to whichever side runs out first: a
               // companion at about a quarter of the person's height that never
               // outgrows their stance.
-              const targetHeight = fitHeight * 0.22;
-              const maxWidth = fitHeight * 0.34;
+              const targetHeight = fitHeight * 0.2;
+              const maxWidth = fitHeight * 0.3;
               pet.scale.setScalar(
                 Math.min(
                   targetHeight / Math.max(0.0001, petSize.y),
@@ -651,6 +658,21 @@ export function AvatarModel3D({
               pet.position.z += PET_OFFSET_Z - petCentre.z;
               // Base on the person's floor line: not floating, not sunk.
               pet.position.y += personNow.min.y - scaled.min.y;
+              pet.updateMatrixWorld(true);
+
+              // One shot, two subjects: the camera pulls back and sideways just
+              // enough that the cat sits beside its person instead of hanging on
+              // the edge of the frame.
+              const pair = measureBounds(model, THREE);
+              pair.union(measureBounds(pet, THREE));
+              const pairSize = new THREE.Vector3();
+              const pairCentre = new THREE.Vector3();
+              pair.getSize(pairSize);
+              pair.getCenter(pairCentre);
+              view.height = Math.max(fitHeight * 1.02, pairSize.y);
+              view.width = Math.max(pairSize.x, pairSize.z) * 1.12;
+              view.x = pairCentre.x;
+              frameRef.current?.();
 
               pet.traverse((child: any) => {
                 if (child.isMesh) disposables.push(child.material);

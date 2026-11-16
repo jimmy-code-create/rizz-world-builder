@@ -10,8 +10,9 @@ import { AvatarModel3D } from "./AvatarModel3D";
 import { OUTFIT_STYLES } from "./clothes";
 import {
   AVATAR_BACKGROUNDS,
+  AVATAR_BODIES,
   DEFAULT_AVATAR,
-  type AvatarGender,
+  bodyFor,
   HAIR_COLOURS,
   NO_CAPABILITIES,
   OUTFIT_COLOURS,
@@ -51,7 +52,10 @@ export function CreateAvatarScreen() {
 
   const cat = useMemo(() => catFromProfile(profile), [profile]);
   const petColourway = useMemo(() => colourwayFor(cat?.colourway).id, [cat]);
-  const setGender = (gender: AvatarGender) => setConfig((current) => ({ ...current, gender }));
+  // The body decides the gender it reports, so the rest of the app keeps asking
+  // the same question it always did.
+  const setBody = (id: string) =>
+    setConfig((current) => ({ ...current, body: bodyFor(id).id, gender: bodyFor(id).gender }));
 
   const morphs = capabilities.morphs;
   const morphGroups = useMemo(
@@ -139,12 +143,9 @@ export function CreateAvatarScreen() {
 
           <ChoiceRow
             title="Who"
-            options={[
-              { id: "male", label: "Man" },
-              { id: "female", label: "Woman" },
-            ]}
-            value={config.gender}
-            onPick={(id) => setGender(id as AvatarGender)}
+            options={AVATAR_BODIES.map((entry) => ({ id: entry.id, label: entry.name }))}
+            value={config.body}
+            onPick={(id) => setBody(id)}
           />
 
           <ChoiceRow
@@ -198,7 +199,7 @@ export function CreateAvatarScreen() {
             />
           )}
 
-          {!capabilities.outfit && capabilities.skin && (
+          {!capabilities.outfit && capabilities.skin && !bodyFor(config.body).wardrobe && (
             <section className="rounded-2xl border border-white/[0.07] bg-surface-2 p-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
                 Clothes
