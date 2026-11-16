@@ -4,7 +4,12 @@ import { CreateAvatarScreen } from "@/features/create-avatar/CreateAvatarScreen"
 import { useCatAvailability } from "@/features/cat-studio/useCatStudio";
 
 export const Route = createFileRoute("/_app/cat-studio")({
-  head: () => ({ meta: [{ title: "Create Avatar · RIZZ" }] }),
+  head: () => ({
+    meta: [{ title: "Create Avatar · RIZZ" }],
+    // 4.6MB of model + 600KB of renderer. Starting the download with the route
+    // instead of after mount is the difference between a spinner and a person.
+    links: [{ rel: "preload", href: "/models/avatar.glb", as: "fetch", crossOrigin: "anonymous" }],
+  }),
   component: CatStudioRoute,
 });
 

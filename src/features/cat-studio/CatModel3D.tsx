@@ -199,7 +199,9 @@ export function CatModel3D({
         const box = new THREE.Box3().setFromObject(model);
         const size = new THREE.Vector3();
         box.getSize(size);
-        const scale = 2.2 / Math.max(0.0001, size.y);
+        // Fit the largest side, not the height: this model is about twice as wide
+        // as it is tall, so scaling by height pushed it out of the canvas.
+        const scale = 2.2 / Math.max(0.0001, Math.max(size.x, size.y));
         model.scale.setScalar(scale);
         const box2 = new THREE.Box3().setFromObject(model);
         const centre = new THREE.Vector3();

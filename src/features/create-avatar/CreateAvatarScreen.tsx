@@ -4,7 +4,6 @@ import { ArrowLeft, Check, PawPrint, RotateCcw, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { catFromProfile } from "@/features/cat-studio/useCatStudio";
-import { CatModel3D } from "@/features/cat-studio/CatModel3D";
 import { colourwayFor } from "@/features/cat-studio/model";
 import { CatStudioScreen } from "@/features/cat-studio/CatStudioScreen";
 import { AvatarModel3D } from "./AvatarModel3D";
@@ -111,20 +110,18 @@ export function CreateAvatarScreen() {
         </div>
       ) : (
         <div className="mt-3 space-y-3">
-          {/* The stage: the person, arms down, and the pet at their feet. */}
-          <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[#141416]">
-            <div className="h-[46dvh] min-h-[260px] w-full">
-              <AvatarModel3D config={config} onCapabilities={setCapabilities} />
+          {/* The stage: the person, arms down, full length, and the pet standing
+              beside their feet in the same scene and light. */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[radial-gradient(120%_90%_at_50%_12%,#24261b_0%,#151518_55%,#101012_100%)]">
+            <div className="h-[58dvh] min-h-[360px] w-full">
+              <AvatarModel3D
+                config={config}
+                petColourway={cat ? petColourway : null}
+                onCapabilities={setCapabilities}
+              />
             </div>
 
-            {/* The pet is the same 3D cat as Flexes — its own little canvas,
-                standing beside the person's feet on the same floor line. */}
-            {cat ? (
-              <div className="pointer-events-none absolute bottom-0 right-0 h-[44%] w-[36%] max-w-[132px]">
-                <CatModel3D colourway={petColourway} className="h-full w-full" />
-                <span className="mx-auto block h-2 w-14 rounded-full bg-black/45 blur-[3px]" />
-              </div>
-            ) : (
+            {!cat && (
               <button
                 type="button"
                 onClick={() => setTab("pets")}

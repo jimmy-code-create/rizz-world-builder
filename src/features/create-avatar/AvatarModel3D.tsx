@@ -23,6 +23,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, TriangleAlert, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  CAT_MODEL_URL,
+  colourwayFor,
+  recolourTexture,
+  type CatColourwayId,
+} from "@/features/cat-studio/model";
 import { dropArms } from "./pose";
 import {
   AVATAR_MODEL_URL,
@@ -86,10 +92,13 @@ function applyAvatarConfig(
 export function AvatarModel3D({
   config,
   className,
+  petColourway,
   onCapabilities,
 }: {
   config: Avatar3DConfig;
   className?: string;
+  /** The pet stands beside the person; omit it for no pet. */
+  petColourway?: CatColourwayId | string | null;
   /** What this model can be changed with. Sent once the file is loaded. */
   onCapabilities?: (capabilities: AvatarCapabilities) => void;
 }) {
@@ -103,6 +112,11 @@ export function AvatarModel3D({
   const [status, setStatus] = useState<Status>("loading");
   const [attempt, setAttempt] = useState(0);
   const configRef = useRef(config);
+  const petColourwayRef = useRef(petColourway);
+
+  useEffect(() => {
+    petColourwayRef.current = petColourway;
+  }, [petColourway]);
 
   useEffect(() => {
     if (!webglAvailable()) setStatus("unsupported");
@@ -132,6 +146,7 @@ export function AvatarModel3D({
     // not visible there — that was the "animation is not defined" crash on
     // leaving the tab.
     let animation: any = null;
+    let petAnimation: any = null;
     let frameModel: (() => void) | null = null;
     setStatus("loading");
 
@@ -247,15 +262,20 @@ export function AvatarModel3D({
         // the middle of the box. This solves the distance from the model's own
         // height and the viewport's aspect, and runs again on resize.
         const fitHeight = centred.max.y - centred.min.y;
-        const fitWidth = Math.max(centred.max.x - centred.min.x, centred.max.z - centred.min.z);
+        // A little wider than the body: the pet stands to the right of the feet,
+        // and reserving that space up front means the view does not jump when
+        // the (slower) cat model finishes loading.
+        const fitWidth =
+          Math.max(centred.max.x - centred.min.x, centred.max.z - centred.min.z) * 1.14;
+        const lookX = 0.06;
         const centerY = (centred.max.y + centred.min.y) / 2 + 0.02;
         frameModel = () => {
           const vFov = (camera.fov * Math.PI) / 180;
           const forHeight = fitHeight / 2 / Math.tan(vFov / 2);
           const forWidth = fitWidth / 2 / (Math.tan(vFov / 2) * Math.max(0.0001, camera.aspect));
           const distance = Math.max(forHeight, forWidth) * 1.12;
-          camera.position.set(0, centerY, distance);
-          camera.lookAt(0, centerY, 0);
+          camera.position.set(lookX, centerY, distance);
+          camera.lookAt(lookX, centerY, 0);
           camera.updateProjectionMatrix();
         };
         frameModel();
@@ -326,6 +346,78 @@ export function AvatarModel3D({
         applyAvatarConfig(meshes, materialsRef.current, configRef.current);
         window.clearTimeout(timeout);
         setStatus("ready");
+
+        // The pet shares this scene, so it shares the light, the floor and the
+        // camera. It is loaded after the person and never blocks them: a missing
+        // or slow cat just means the person shows alone for a moment.
+        if (petColourwayRef.current) {
+          void (async () => {
+            try {
+              const petGltf = await new GLTFLoader().loadAsync(CAT_MODEL_URL);
+              if (disposed) return;
+              const pet = petGltf.scene;
+              const petBox = new THREE.Box3().setFromObject(pet);
+              const petSize = new THREE.Vector3();
+              petBox.getSize(petSize);
+              // This cat is broader than it is tall (43 x 21 in its own units), so
+              // scaling it to a height made it wider than the person and it read
+              // as a grey boulder. Scale to whichever side runs out first: a
+              // companion at about a fifth of the person's height that never
+              // outgrows their stance.
+              const targetHeight = fitHeight * 0.32;
+              const maxWidth = fitHeight * 0.46;
+              pet.scale.setScalar(
+                Math.min(
+                  targetHeight / Math.max(0.0001, petSize.y),
+                  maxWidth / Math.max(0.0001, Math.max(petSize.x, petSize.z)),
+                ),
+              );
+              const scaled = new THREE.Box3().setFromObject(pet);
+              const petCentre = new THREE.Vector3();
+              scaled.getCenter(petCentre);
+              const personNow = new THREE.Box3().setFromObject(model);
+              // At their feet and a step in front, so it overlaps the legs and
+              // reads as standing beside them rather than floating past them.
+              pet.position.x += personNow.max.x * 0.45 - petCentre.x;
+              pet.position.z += 0.42 - petCentre.z;
+              pet.position.y += personNow.min.y - scaled.min.y;
+
+              const colourway = colourwayFor(petColourwayRef.current);
+              pet.traverse((child: any) => {
+                if (!child.isMesh) return;
+                child.frustumCulled = false;
+                const material = child.material;
+                if (!material) return;
+                disposables.push(material);
+                // The cat's own body material: recolour its texture, exactly as
+                // the Flexes viewer does, so both show the same animal.
+                if (material.name === "Material_81" && material.map?.image) {
+                  const canvas = recolourTexture(material.map.image, colourway);
+                  if (canvas) {
+                    const texture = new THREE.CanvasTexture(canvas);
+                    texture.colorSpace = material.map.colorSpace;
+                    texture.flipY = material.map.flipY;
+                    texture.wrapS = material.map.wrapS;
+                    texture.wrapT = material.map.wrapT;
+                    disposables.push(texture);
+                    material.map = texture;
+                    material.needsUpdate = true;
+                  }
+                }
+              });
+
+              if (petGltf.animations?.length) {
+                const petMixer = new THREE.AnimationMixer(pet);
+                petMixer.clipAction(petGltf.animations[0]).play();
+                petAnimation = petMixer;
+                if (visible) petMixer.update(0);
+              }
+              scene.add(pet);
+            } catch {
+              // No pet model: the person is already on screen, so nothing to say.
+            }
+          })();
+        }
       } catch {
         window.clearTimeout(timeout);
         if (!disposed) setStatus(model ? "failed" : "missing");
@@ -337,6 +429,7 @@ export function AvatarModel3D({
         if (!visible) return;
         const delta = Math.min(clock.getDelta(), 0.05);
         animation?.update(delta);
+        petAnimation?.update(delta);
         if (model) {
           if (!drag.active) rotation.y += 0.0015;
           model.rotation.set(rotation.x, rotation.y, 0);
@@ -354,6 +447,7 @@ export function AvatarModel3D({
       cancelAnimationFrame(frame);
       cleanup.forEach((fn) => fn());
       animation?.stopAllAction?.();
+      petAnimation?.stopAllAction?.();
       disposables.forEach((item) => item.dispose?.());
       meshesRef.current = [];
       materialsRef.current = { skin: [], hair: [], outfit: [] };
