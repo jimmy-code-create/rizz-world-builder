@@ -125,21 +125,32 @@ function applyAvatarConfig(
 ) {
   const paint = (group: any[], hex: string, fabric?: ClothKind | null, tone = 1) => {
     for (const material of group) {
+      // A fabric is a bare canvas we paint ourselves, so it has no `.image` of
+      // its own — reading `source.image` there returned undefined and every
+      // garment swatch silently did nothing.
       const source =
         (fabric ? clothingTexture(fabric) : null) ??
         material.userData.avatarSourceMap ??
         material.map;
-      if (!source?.image) continue;
-      material.userData.avatarSourceMap = source;
-      const canvas = tintTexture(source.image, hex, tone);
+      const image = source?.image ?? source;
+      if (!image?.width || !image?.height) continue;
+      // Only the artist's texture is remembered: a generated fabric must never
+      // become the base for the next colour, or patterns would stack.
+      if (!fabric) material.userData.avatarSourceMap = source;
+      const canvas = tintTexture(image, hex, tone);
       if (!canvas) continue;
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = source.colorSpace;
-      texture.flipY = source.flipY;
-      texture.wrapS = source.wrapS;
-      texture.wrapT = source.wrapT;
-      if (material.userData.avatarTint) track(material.userData.avatarTint);
-      material.userData.avatarTint = texture;
+      // Keep the material's own texture object and only swap its pixels. A brand
+      // new CanvasTexture lost this model's garment samplers and the mesh stopped
+      // drawing altogether; re-uploading into the existing texture keeps every
+      // setting the exporter chose (flip, wrap, colour space, UV channel).
+      let texture = material.userData.avatarTint;
+      if (!texture) {
+        texture = material.map.clone();
+        material.userData.avatarTint = texture;
+        track(texture);
+      }
+      texture.image = canvas;
+      texture.needsUpdate = true;
       material.map = texture;
       // The tone now lives in the pixels, so the flat multiplier stays neutral.
       material.color?.set?.("#ffffff");

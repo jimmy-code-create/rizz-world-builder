@@ -99,10 +99,10 @@ function paint(kind: ClothKind): HTMLCanvasElement | null {
     case "plaid": {
       ctx.fillStyle = "#b9b9b9";
       ctx.fillRect(0, 0, SIZE, SIZE);
-      bands(ctx, "rgba(255,255,255,0.5)", 34, 34, 128);
+      bands(ctx, "rgba(255,255,255,0.5)", 16, 16, 64);
       ctx.fillStyle = "rgba(0,0,0,0.28)";
-      for (let y = 0; y < SIZE; y += 128) ctx.fillRect(0, y + 60, SIZE, 6);
-      for (let x = 0; x < SIZE; x += 128) ctx.fillRect(x + 60, 0, 6, SIZE);
+      for (let y = 0; y < SIZE; y += 64) ctx.fillRect(0, y + 30, SIZE, 3);
+      for (let x = 0; x < SIZE; x += 64) ctx.fillRect(x + 30, 0, 3, SIZE);
       grain(ctx, 0.18);
       break;
     }
@@ -110,7 +110,7 @@ function paint(kind: ClothKind): HTMLCanvasElement | null {
       ctx.fillStyle = "#dcdcdc";
       ctx.fillRect(0, 0, SIZE, SIZE);
       ctx.fillStyle = "rgba(30,30,30,0.55)";
-      for (let y = 0; y < SIZE; y += 96) ctx.fillRect(0, y, SIZE, 40);
+      for (let y = 0; y < SIZE; y += 48) ctx.fillRect(0, y, SIZE, 20);
       grain(ctx, 0.16);
       break;
     }

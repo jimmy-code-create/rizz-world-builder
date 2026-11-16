@@ -198,6 +198,18 @@ export function CreateAvatarScreen() {
             />
           )}
 
+          {!capabilities.outfit && capabilities.skin && (
+            <section className="rounded-2xl border border-white/[0.07] bg-surface-2 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+                Clothes
+              </p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                This body wears a built-in outfit, so there is nothing to swap. Choose{" "}
+                <span className="font-semibold text-foreground">Man</span> for the wardrobe.
+              </p>
+            </section>
+          )}
+
           {capabilities.glasses && (
             <section className="rounded-2xl border border-white/[0.07] bg-surface-2 p-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
