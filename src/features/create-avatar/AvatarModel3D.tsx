@@ -23,13 +23,9 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Loader2, TriangleAlert, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  CAT_MODEL_URL,
-  colourwayFor,
-  recolourTexture,
-  type CatColourwayId,
-} from "@/features/cat-studio/model";
+import { CAT_MODEL_URL, colourwayFor, type CatColourwayId } from "@/features/cat-studio/model";
 import { dropArms } from "./pose";
+import { petPreviewCanvas } from "./pet";
 import { tintTexture } from "./tint";
 import {
   AVATAR_MODELS,
@@ -167,7 +163,8 @@ function recolourPet(
     if (!source?.image) return;
     if (material.name !== "Material_81") return;
     material.userData.petSourceMap = source;
-    const canvas = recolourTexture(source.image, colourway);
+    // Preview lift: the saved colourway, lit so it can be seen (see `pet.ts`).
+    const canvas = petPreviewCanvas(source.image, colourway.id);
     if (!canvas) return;
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = source.colorSpace;
@@ -579,8 +576,8 @@ export function AvatarModel3D({
               // as a grey boulder. Scale to whichever side runs out first: a
               // companion at about a quarter of the person's height that never
               // outgrows their stance.
-              const targetHeight = fitHeight * 0.24;
-              const maxWidth = fitHeight * 0.38;
+              const targetHeight = fitHeight * 0.3;
+              const maxWidth = fitHeight * 0.46;
               pet.scale.setScalar(
                 Math.min(
                   targetHeight / Math.max(0.0001, petSize.y),
