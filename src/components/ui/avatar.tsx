@@ -8,8 +8,6 @@ import { TOKENS, type PresenceState } from "@/lib/tokens";
 import { useStoriesStore } from "@/lib/stories-store";
 import { MediaViewer } from "@/components/media/MediaViewer";
 import { ProfilePreviewDialog } from "@/components/ProfilePreview";
-import { catAvatarSrc } from "@/features/cat-studio/CatAvatar";
-import { useCatAvatar } from "@/features/cat-studio/useCatAvatars";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -82,10 +80,6 @@ export function UserAvatar({
     () => getAvatarPalette(fallback || alt || userId || ""),
     [fallback, alt, userId]
   );
-  // A saved cat replaces the face, because that is what choosing it means. The
-  // lookup is one shared cached query for the whole app, so members without a
-  // cat cost nothing beyond the first map read.
-  const catAvatar = useCatAvatar(userId);
 
   const storyStatus = hasStory !== undefined
     ? (hasStory === true ? "unseen" : hasStory === false ? "none" : hasStory)
@@ -119,34 +113,22 @@ export function UserAvatar({
             storyStatus !== "none" && "ring-2 ring-background",
           )}
         >
-          {/* A member who chose their cat gets the same layered artwork Cat
-              Studio saves, as one cached data URI. The photo in `avatar_url` is
-              untouched, so the long-press viewer still opens it. */}
-          {catAvatar ? (
-            <img
-              src={catAvatarSrc(catAvatar, pixelBox)}
-              alt={alt || fallback}
-              draggable={false}
-              className="aspect-square h-full w-full select-none object-cover"
-            />
-          ) : (
-            <>
-              <AvatarPrimitive.Image
-                src={normalizeAvatarUrl(src) ?? undefined}
-                alt={alt || fallback}
-                className="aspect-square h-full w-full object-cover"
-              />
-              <AvatarPrimitive.Fallback
-                style={{ backgroundColor: palette.bg, color: palette.text }}
-                className={cn(
-                  "flex h-full w-full items-center justify-center font-semibold border-0 shadow-none ring-0",
-                  fontClass,
-                )}
-              >
-                {fallback.slice(0, 2).toUpperCase()}
-              </AvatarPrimitive.Fallback>
-            </>
-          )}
+          {/* The face is always the photo (or the initials): the cat belongs to
+              Flexes and is never worn in its place. */}
+          <AvatarPrimitive.Image
+            src={normalizeAvatarUrl(src) ?? undefined}
+            alt={alt || fallback}
+            className="aspect-square h-full w-full object-cover"
+          />
+          <AvatarPrimitive.Fallback
+            style={{ backgroundColor: palette.bg, color: palette.text }}
+            className={cn(
+              "flex h-full w-full items-center justify-center font-semibold border-0 shadow-none ring-0",
+              fontClass,
+            )}
+          >
+            {fallback.slice(0, 2).toUpperCase()}
+          </AvatarPrimitive.Fallback>
         </AvatarPrimitive.Root>
       </div>
 

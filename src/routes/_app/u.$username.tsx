@@ -766,11 +766,10 @@ function ProfilePage() {
               { value: "main", label: "Main" },
               { value: "activity", label: "Activity" },
               { value: "paws", label: "Paws" },
-              // The cat is a Flex, never the profile picture: the tab only shows
-              // up for members who have one, plus their own empty state.
-              ...((profile as { avatar_type?: string | null }).avatar_type === "cat" || isMe
-                ? [{ value: "flexes", label: "Flexes" }]
-                : []),
+              // The cat is a Flex, never the profile picture, so every profile
+              // gets the tab: yours is where you make one, someone else's shows
+              // theirs or says they have not made one yet.
+              { value: "flexes", label: "Flexes" },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}

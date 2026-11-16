@@ -143,7 +143,10 @@ export function useCatStudio() {
 
 /** A profile's saved cat, if it has one. */
 export function catFromProfile(profile: Record<string, unknown> | null | undefined): CatConfig | null {
-  if (!profile || profile.avatar_type !== "cat") return null;
+  // The cat is a Flex, so what makes it exist is the saved config — the old
+  // `avatar_type === "cat"` gate meant a member only had a cat while they were
+  // wearing it, and switching the face back would have emptied Flexes.
+  if (!profile || !profile.avatar_config) return null;
   const raw = profile.avatar_config;
   const config = sanitizeCatConfig(typeof raw === "string" ? safeParse(raw) : raw);
   return config;
@@ -172,16 +175,17 @@ export function useMyCat() {
     queryFn: async () => {
       const { data, error } = await db
         .from("profiles")
-        .select("avatar_url, avatar_type, avatar_config")
+        .select("avatar_url, avatar_config")
         .eq("id", user!.id)
         .maybeSingle();
       if (error || !data) return null;
       const row = data as {
         avatar_url?: string | null;
-        avatar_type?: string | null;
         avatar_config?: unknown;
       };
-      if (row.avatar_type !== "cat" || !row.avatar_url || !row.avatar_config) return null;
+      // `avatar_url` holds the render the studio saved, so the sticker works
+      // whether or not the cat was ever used as a picture.
+      if (!row.avatar_url || !row.avatar_config) return null;
       return { url: row.avatar_url, config: sanitizeCatConfig(row.avatar_config) };
     },
   });

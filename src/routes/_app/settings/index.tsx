@@ -114,9 +114,9 @@ function SettingsHubPage() {
           🐈
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">Cat Studio</span>
+          <span className="block text-sm font-semibold">Create Avatar</span>
           <span className="block truncate text-xs text-muted-foreground">
-            Build a cat avatar, shape it, dress it up
+            Make your look, and the pet that stands beside you
           </span>
         </span>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />

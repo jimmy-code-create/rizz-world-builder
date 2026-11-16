@@ -1,16 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { CatStudioScreen } from "@/features/cat-studio/CatStudioScreen";
+import { CreateAvatarScreen } from "@/features/create-avatar/CreateAvatarScreen";
 import { useCatAvailability } from "@/features/cat-studio/useCatStudio";
 
 export const Route = createFileRoute("/_app/cat-studio")({
-  head: () => ({ meta: [{ title: "Cat Studio · RIZZ" }] }),
+  head: () => ({ meta: [{ title: "Create Avatar · RIZZ" }] }),
   component: CatStudioRoute,
 });
 
 /**
- * Cat Studio is only reachable once pending_catstudio.sql has been applied.
- * Until then this route explains itself instead of throwing on a missing table.
+ * Create Avatar — the person on the Avatar tab, the cat on the Pets tab.
+ *
+ * The Pets tab is Cat Studio, which needs pending_catstudio.sql; until that is
+ * applied the route says so instead of throwing on a missing table.
  */
 function CatStudioRoute() {
   const availability = useCatAvailability();
@@ -43,7 +45,7 @@ function CatStudioRoute() {
           </button>
         </div>
       )}
-      <CatStudioScreen />
+      <CreateAvatarScreen />
     </>
   );
 }

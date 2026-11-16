@@ -23,8 +23,6 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 import { DEFAULT_AVATARS } from "@/lib/default-avatars";
-import { CatAvatar } from "@/features/cat-studio/CatAvatar";
-import { useQueryClient } from "@tanstack/react-query";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
 import { BannerGradientPicker } from "@/components/profile/BannerGradientPicker";
@@ -105,15 +103,6 @@ function PartFrame({
 
 function ProfileSettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
-  const qc = useQueryClient();
-  /**
-   * The raw profile row. `avatar_type` and `avatar_config` only exist after
-   * pending_catstudio.sql, so the shape is checked rather than assumed: a
-   * database without them keeps the photo and never sees a failed update.
-   */
-  const row = (profile ?? {}) as Record<string, unknown>;
-  const catConfig = row.avatar_config ?? null;
-  const catIsPicture = row.avatar_type === "cat";
   const { t } = useI18n();
   const nav = useNavigate();
   const { part } = Route.useSearch();
@@ -171,13 +160,7 @@ function ProfileSettingsPage() {
       .from("profiles")
       .update(
         kind === "avatar"
-          ? {
-              avatar_url: data.publicUrl,
-              // Uploading a face is also how you stop using the cat. The key is
-              // only sent once the cat columns exist, so this stays a plain
-              // avatar change on a database without the migration.
-              ...("avatar_type" in row ? { avatar_type: "photo" } : {}),
-            }
+          ? { avatar_url: data.publicUrl }
           : { banner_url: data.publicUrl, banner_mode: "image" },
       )
       .eq("id", user.id);
@@ -233,35 +216,10 @@ function ProfileSettingsPage() {
   /** Pick one of the built-in cat avatars — no upload, no storage. */
   async function chooseAvatar(url: string) {
     if (!user) return;
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        avatar_url: url,
-        ...("avatar_type" in row ? { avatar_type: "photo" } : {}),
-      })
-      .eq("id", user.id);
+    const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
     if (error) return toast.error(error.message);
     await refreshProfile();
     toast.success("Avatar updated ✨");
-  }
-
-  /**
-   * The other half of the choice: wear the cat Cat Studio saved. It writes only
-   * `avatar_type`, so the photo in `avatar_url` survives for the day the member
-   * switches back.
-   */
-  async function useCatAsPicture() {
-    if (!user) return;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ avatar_type: "cat" })
-      .eq("id", user.id);
-    if (error) return toast.error(error.message);
-    await refreshProfile();
-    // Every avatar in the app reads this map, so it has to be refetched rather
-    // than left stale for its five minutes.
-    void qc.invalidateQueries({ queryKey: ["cat-avatars"] });
-    toast.success("Your cat is your picture now");
   }
 
   /** Each part saves only what it owns, so one edit never rewrites another. */
@@ -400,37 +358,6 @@ function ProfileSettingsPage() {
               </span>
             </label>
           </div>
-
-          {catConfig ? (
-            <div>
-              <Label className="text-xs text-muted-foreground">Your cat</Label>
-              <button
-                type="button"
-                onClick={() => void useCatAsPicture()}
-                aria-pressed={catIsPicture}
-                className={`mt-2 flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  catIsPicture
-                    ? "border-primary/60 bg-primary/10"
-                    : "border-white/10 bg-surface-2 hover:border-white/25"
-                }`}
-              >
-                <CatAvatar config={catConfig} size={40} />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-foreground">
-                    {catIsPicture ? "Your cat is your picture" : "Use my cat as my picture"}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {catIsPicture
-                      ? "Your photo is kept — pick any face below to switch back."
-                      : "The cat you saved in Cat Studio shows wherever your avatar does."}
-                  </span>
-                </span>
-                {catIsPicture && (
-                  <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                )}
-              </button>
-            </div>
-          ) : null}
 
           <div>
             <Label className="text-xs text-muted-foreground">{t("profile_pick_cats")}</Label>
