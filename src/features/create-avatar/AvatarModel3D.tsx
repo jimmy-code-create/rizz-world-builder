@@ -51,8 +51,8 @@ function webglAvailable() {
     const canvas = document.createElement("canvas");
     return Boolean(
       canvas.getContext("webgl2") ??
-        canvas.getContext("webgl") ??
-        canvas.getContext("experimental-webgl"),
+      canvas.getContext("webgl") ??
+      canvas.getContext("experimental-webgl"),
     );
   } catch {
     return false;
@@ -127,6 +127,12 @@ export function AvatarModel3D({
     const disposables: { dispose?: () => void }[] = [];
     const cleanup: (() => void)[] = [];
     let renderer: any = null;
+    // Hoisted to the effect scope on purpose: the cleanup below stops this mixer
+    // while the loader is still awaiting, and a `let` inside the async body is
+    // not visible there — that was the "animation is not defined" crash on
+    // leaving the tab.
+    let animation: any = null;
+    let frameModel: (() => void) | null = null;
     setStatus("loading");
 
     const timeout = window.setTimeout(() => {
@@ -167,6 +173,7 @@ export function AvatarModel3D({
         renderer.setSize(width, height);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
+        frameModel?.();
       };
       resize();
       const observer = new ResizeObserver(resize);
@@ -214,7 +221,6 @@ export function AvatarModel3D({
       cleanup.push(() => document.removeEventListener("visibilitychange", onVisibility));
 
       let model: any = null;
-      let animation: any = null;
       try {
         const gltf = await new GLTFLoader().loadAsync(AVATAR_MODEL_URL);
         if (disposed) return;
@@ -235,6 +241,24 @@ export function AvatarModel3D({
         centred.getCenter(centre);
         model.position.sub(centre);
         model.position.y += 0.02;
+
+        // Frame the whole body, head to feet. A fixed camera only fits one
+        // aspect ratio: on a phone the feet were cropped and the figure sat in
+        // the middle of the box. This solves the distance from the model's own
+        // height and the viewport's aspect, and runs again on resize.
+        const fitHeight = centred.max.y - centred.min.y;
+        const fitWidth = Math.max(centred.max.x - centred.min.x, centred.max.z - centred.min.z);
+        const centerY = (centred.max.y + centred.min.y) / 2 + 0.02;
+        frameModel = () => {
+          const vFov = (camera.fov * Math.PI) / 180;
+          const forHeight = fitHeight / 2 / Math.tan(vFov / 2);
+          const forWidth = fitWidth / 2 / (Math.tan(vFov / 2) * Math.max(0.0001, camera.aspect));
+          const distance = Math.max(forHeight, forWidth) * 1.12;
+          camera.position.set(0, centerY, distance);
+          camera.lookAt(0, centerY, 0);
+          camera.updateProjectionMatrix();
+        };
+        frameModel();
 
         const meshes: any[] = [];
         const skin: any[] = [];

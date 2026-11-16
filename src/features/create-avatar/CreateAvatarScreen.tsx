@@ -4,7 +4,8 @@ import { ArrowLeft, Check, PawPrint, RotateCcw, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { catFromProfile } from "@/features/cat-studio/useCatStudio";
-import { catSvgString } from "@/features/cat-studio/renderPng";
+import { CatModel3D } from "@/features/cat-studio/CatModel3D";
+import { colourwayFor } from "@/features/cat-studio/model";
 import { CatStudioScreen } from "@/features/cat-studio/CatStudioScreen";
 import { AvatarModel3D } from "./AvatarModel3D";
 import {
@@ -47,7 +48,7 @@ export function CreateAvatarScreen() {
   }, [config]);
 
   const cat = useMemo(() => catFromProfile(profile), [profile]);
-  const petSvg = useMemo(() => (cat ? catSvgString(cat, 160) : null), [cat]);
+  const petColourway = useMemo(() => colourwayFor(cat?.colourway).id, [cat]);
 
   const morphs = capabilities.morphs;
   const morphGroups = useMemo(
@@ -116,17 +117,12 @@ export function CreateAvatarScreen() {
               <AvatarModel3D config={config} onCapabilities={setCapabilities} />
             </div>
 
-            {petSvg ? (
-              <div className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 flex-col items-center">
-                <img
-                  src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(petSvg)}`}
-                  alt="Your pet"
-                  width={86}
-                  height={86}
-                  draggable={false}
-                  className="h-[86px] w-[86px] select-none drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)]"
-                />
-                <span className="mt-[-8px] h-2 w-16 rounded-full bg-black/50 blur-[3px]" />
+            {/* The pet is the same 3D cat as Flexes — its own little canvas,
+                standing beside the person's feet on the same floor line. */}
+            {cat ? (
+              <div className="pointer-events-none absolute bottom-0 right-0 h-[44%] w-[36%] max-w-[132px]">
+                <CatModel3D colourway={petColourway} className="h-full w-full" />
+                <span className="mx-auto block h-2 w-14 rounded-full bg-black/45 blur-[3px]" />
               </div>
             ) : (
               <button
