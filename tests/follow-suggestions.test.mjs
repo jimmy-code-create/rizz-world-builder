@@ -48,9 +48,16 @@ await check("Follow is a solid lime control with the add-person glyph", () => {
   assert.ok(source.includes("<UserPlus"), "the row uses the reference's add-person icon");
   assert.ok(source.includes("bg-[#c9ff3d]"), "the control is filled lime");
   assert.ok(source.includes("text-[#0b0b0c]"), "ink sits on the lime, not white");
-  assert.ok(source.includes("h-8 min-w-[80px]"), "the control keeps a compact fixed slot");
-  assert.ok(source.includes("h-8 w-8 shrink-0"), "the avatar matches the reference's small circle");
-  assert.ok(source.includes("text-[13px] font-semibold"), "the name line stays compact");
+  assert.ok(source.includes("h-9 min-w-[88px]"), "the control keeps a fixed slot wide enough for Following");
+  assert.ok(source.includes("h-10 w-10 shrink-0"), "the avatar is a 40px circle");
+  assert.ok(source.includes("text-[14px] font-semibold"), "the name line reads at a glance");
+});
+
+await check("a slow follow shows progress instead of a dead button", () => {
+  assert.ok(source.includes("<Loader2"), "the pending row swaps in a spinner");
+  assert.ok(source.includes("animate-spin"), "the spinner turns");
+  assert.ok(source.includes("aria-busy={pending || undefined}"), "the control reports it is busy");
+  assert.ok(source.includes("followMut.variables === p.id"), "pending is per row, not for every row");
 });
 
 await check("the follow mutation is untouched", () => {

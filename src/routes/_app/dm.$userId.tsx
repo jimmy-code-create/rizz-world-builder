@@ -37,6 +37,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { ChatComposer, type PendingComposerFile } from "@/components/chat/MessageComposer";
+import { TypingMascot } from "@/components/chat/TypingMascot";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { ChatPollCard } from "@/components/chat/PollCard";
@@ -1649,12 +1650,8 @@ function DMPage() {
                   >
                     {peerTyping ? (
                       <span className="chat-header__typing">
+                        <TypingMascot size={12} className="typing-mascot--header" />
                         typing
-                        <span className="chat-header__typing-dots" aria-hidden="true">
-                          <span>.</span>
-                          <span>.</span>
-                          <span>.</span>
-                        </span>
                       </span>
                     ) : peerCustom ? (
                       <CustomStatusLine
@@ -2479,15 +2476,16 @@ function DMPage() {
             ))}
             <div ref={endRef} />
             {peerTyping && (
-              // Typing is a quiet line, not a bubble: it sits in the message flow at
-              // the same left edge as the rows above it.
-              <div className="flex items-center gap-2 px-4 py-1.5 text-[11px] text-muted-foreground">
-                <span className="inline-flex gap-1">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
+              // Typing is the mascot at the keyboard, not a bubble: it sits in the
+              // message flow at the same left edge as the rows above it.
+              <div
+                className="dm-typing px-4 py-1 text-[11px] text-muted-foreground"
+                aria-live="polite"
+              >
+                <TypingMascot size={26} />
+                <span className="dm-typing__label">
+                  {other.data?.display_name || other.data?.username || "They"} is typing…
                 </span>
-                {other.data?.display_name || other.data?.username || "They"} is typing…
               </div>
             )}
           </div>

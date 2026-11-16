@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAvatarPalette } from "@/components/ui/avatar";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { formatNumber } from "@/lib/formatters";
-import { Check, UserPlus, Users } from "lucide-react";
+import { Check, Loader2, UserPlus, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,10 +26,11 @@ type Suggestion = {
  * and title, then roomy rows with a circular face, the name, one handle line
  * (`@name · N rizz`) and a solid lime Follow control.
  *
- * The old panel was a compact square-avatar list. This keeps the same data and
- * follow mutation, but gives the suggestion section enough presence to read as
- * a deliberate card instead of a strip of utility rows. Shared interests stay
- * as a quiet lime tail so the suggestions still explain why they are here.
+ * Rows are deliberately taller than a utility list: a 40px face, a two-line
+ * label block and a 36px control give each person enough height to read as a
+ * person rather than a settings row, which is what the reference panel does.
+ * Shared interests stay as a quiet lime tail so the suggestions still explain
+ * why they are here.
  */
 export function FollowSuggestions() {
   const { user, profile } = useAuth();
@@ -97,7 +98,7 @@ export function FollowSuggestions() {
       aria-labelledby="suggested-for-you-heading"
       className="mb-3 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#141416]"
     >
-      <div className="flex items-center gap-2.5 px-3 pb-1 pt-3">
+      <div className="flex items-center gap-2.5 px-4 pb-2 pt-3.5">
         <Users
           className="h-[18px] w-[18px] shrink-0 text-[#f2efe6]"
           strokeWidth={1.8}
@@ -111,7 +112,7 @@ export function FollowSuggestions() {
         </h3>
       </div>
 
-      <div className="px-1 pb-1.5 pt-0.5">
+      <div className="px-1.5 pb-2 pt-0">
         {data.map((p) => {
           const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
           const seed = p.username || p.display_name || p.id;
@@ -123,18 +124,18 @@ export function FollowSuggestions() {
           return (
             <div
               key={p.id}
-              className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/[0.035]"
+              className="flex items-center gap-3 rounded-2xl px-2.5 py-2 transition-colors hover:bg-white/[0.035]"
             >
               <Link
                 to="/u/$username"
                 params={{ username: p.username ?? "" }}
-                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
               >
                 {/* A circle for the photo or the palette initial, so the row
                     keeps one silhouette whether the member has uploaded a face
                     or is still new. */}
                 <span
-                  className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/[0.08]"
+                  className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/[0.08]"
                   style={{ background: p.avatar_url ? "#141418" : palette.bg }}
                   aria-hidden={p.avatar_url ? undefined : true}
                 >
@@ -147,17 +148,17 @@ export function FollowSuggestions() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <span className="text-[13px] font-semibold" style={{ color: palette.text }}>
+                    <span className="text-[15px] font-semibold" style={{ color: palette.text }}>
                       {initial}
                     </span>
                   )}
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold leading-tight text-[#f2efe6]">
+                  <span className="block truncate text-[14px] font-semibold leading-tight text-[#f2efe6]">
                     {p.display_name || p.username}
                   </span>
-                  <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] leading-none">
+                  <span className="mt-1 flex min-w-0 items-center gap-1 text-[11.5px] leading-none">
                     <span className="truncate text-[#938d84]">@{p.username}</span>
                     <span aria-hidden className="shrink-0 text-[#5f5b56]">
                       ·
@@ -185,16 +186,19 @@ export function FollowSuggestions() {
                 }}
                 disabled={pending || isFollowed}
                 aria-label={isFollowed ? `Following @${p.username}` : `Follow @${p.username}`}
+                aria-busy={pending || undefined}
                 className={
                   isFollowed
-                    ? "relative inline-flex h-8 min-w-[80px] shrink-0 items-center justify-center gap-1 rounded-lg border border-[#c9ff3d]/30 bg-[#c9ff3d]/10 px-2.5 text-[11.5px] font-semibold text-[#c9ff3d] after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] disabled:opacity-100"
-                    : "relative inline-flex h-8 min-w-[80px] shrink-0 items-center justify-center gap-1 rounded-lg bg-[#c9ff3d] px-2.5 text-[11.5px] font-semibold text-[#0b0b0c] transition-colors after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] hover:bg-[#d6ff62] active:bg-[#bdf22e] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141416]"
+                    ? "relative inline-flex h-9 min-w-[88px] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#c9ff3d]/30 bg-[#c9ff3d]/10 px-3 text-[12px] font-semibold text-[#c9ff3d] after:absolute after:-inset-y-1 after:inset-x-0 after:content-[''] disabled:opacity-100"
+                    : "relative inline-flex h-9 min-w-[88px] shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#c9ff3d] px-3 text-[12px] font-semibold text-[#0b0b0c] transition-colors after:absolute after:-inset-y-1 after:inset-x-0 after:content-[''] hover:bg-[#d6ff62] active:bg-[#bdf22e] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141416]"
                 }
               >
                 {isFollowed ? (
-                  <Check className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden="true" />
+                  <Check className="h-4 w-4" strokeWidth={2.4} aria-hidden="true" />
+                ) : pending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.2} aria-hidden="true" />
                 ) : (
-                  <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden="true" />
+                  <UserPlus className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
                 )}
                 {isFollowed ? "Following" : "Follow"}
               </button>

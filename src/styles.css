@@ -960,19 +960,60 @@
   color: var(--primary);
   font-weight: 500;
 }
-.chat-header__typing-dots {
-  display: inline-flex;
-  gap: 1px;
-  margin-left: 1px;
+/* The typing cat: the DM header holds a tiny copy beside the status line, and
+   the thread itself shows the full mascot at the keyboard. Both animate from
+   the same keyframes, so the two places always agree. */
+.typing-mascot {
+  overflow: visible;
 }
-.chat-header__typing-dots span {
-  animation: chat-typing-dot 1.15s ease-in-out infinite;
+.typing-mascot * {
+  transform-box: fill-box;
+  transform-origin: center;
 }
-.chat-header__typing-dots span:nth-child(2) {
+.typing-mascot--header {
+  align-self: center;
+  margin-right: 3px;
+}
+.typing-mascot__paw {
+  animation: typing-mascot-tap 0.42s ease-in-out infinite alternate;
+}
+.typing-mascot__paw--r {
+  animation-delay: 0.21s;
+}
+.typing-mascot__eye {
+  animation: typing-mascot-blink 4.4s ease-in-out infinite;
+}
+.typing-mascot__eye--r {
+  animation-delay: 0.05s;
+}
+.typing-mascot__ear {
+  transform-origin: bottom center;
+  animation: typing-mascot-ear 3.6s ease-in-out infinite;
+}
+.typing-mascot__ear--r {
   animation-delay: 0.14s;
 }
-.chat-header__typing-dots span:nth-child(3) {
-  animation-delay: 0.28s;
+.typing-mascot__tail {
+  transform-origin: right bottom;
+  animation: typing-mascot-tail 1.6s ease-in-out infinite alternate;
+}
+.typing-mascot__bob {
+  transform-origin: center bottom;
+  animation: typing-mascot-bob 1.3s ease-in-out infinite alternate;
+}
+.typing-mascot__keys {
+  animation: typing-mascot-keys 0.84s ease-in-out infinite alternate;
+}
+.dm-typing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dm-typing__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chat-header__action {
   position: relative;
@@ -1208,16 +1249,59 @@
   animation: knock-hero-pulse 2.4s ease-out infinite;
   pointer-events: none;
 }
-@keyframes chat-typing-dot {
-  0%,
-  60%,
-  100% {
-    opacity: 0.25;
+@keyframes typing-mascot-tap {
+  from {
     transform: translateY(0);
   }
-  30% {
+  to {
+    transform: translateY(-2.4px);
+  }
+}
+@keyframes typing-mascot-blink {
+  0%,
+  88%,
+  100% {
+    transform: scaleY(1);
+  }
+  93% {
+    transform: scaleY(0.12);
+  }
+}
+@keyframes typing-mascot-ear {
+  0%,
+  86%,
+  100% {
+    transform: rotate(0deg);
+  }
+  90% {
+    transform: rotate(-7deg);
+  }
+  94% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes typing-mascot-tail {
+  from {
+    transform: rotate(-7deg);
+  }
+  to {
+    transform: rotate(8deg);
+  }
+}
+@keyframes typing-mascot-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-1.6px);
+  }
+}
+@keyframes typing-mascot-keys {
+  from {
+    opacity: 0.55;
+  }
+  to {
     opacity: 1;
-    transform: translateY(-1.5px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1237,9 +1321,13 @@
     transition: none;
     transform: none;
   }
-  .chat-header__typing-dots span {
+  .typing-mascot__paw,
+  .typing-mascot__eye,
+  .typing-mascot__ear,
+  .typing-mascot__tail,
+  .typing-mascot__bob,
+  .typing-mascot__keys {
     animation: none;
-    opacity: 1;
   }
 }
 .chat-bubble {
