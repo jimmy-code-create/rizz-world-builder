@@ -32,23 +32,23 @@ type Suggestion = {
  * classes it can see in the source, and a `hue-${n}` template would render grey.
  */
 const ACTIVITY_STYLES: Record<string, string> = {
-  music: "border-[#f0a6ff]/35 bg-[#f0a6ff]/12 text-[#f0b8ff]",
-  study: "border-[#9fc8ff]/35 bg-[#9fc8ff]/12 text-[#a9ceff]",
-  gaming: "border-[#c9a6ff]/35 bg-[#c9a6ff]/12 text-[#d0b0ff]",
-  games: "border-[#c9a6ff]/35 bg-[#c9a6ff]/12 text-[#d0b0ff]",
-  art: "border-[#ffc48a]/35 bg-[#ffc48a]/12 text-[#ffcb96]",
-  sports: "border-[#8ff0c0]/35 bg-[#8ff0c0]/12 text-[#9bf3c7]",
-  movies: "border-[#ffb3c1]/35 bg-[#ffb3c1]/12 text-[#ffbcc9]",
-  travel: "border-[#9ff0e6]/35 bg-[#9ff0e6]/12 text-[#a9f2e9]",
-  food: "border-[#ffd28a]/35 bg-[#ffd28a]/12 text-[#ffd99a]",
-  tech: "border-[#a6d4ff]/35 bg-[#a6d4ff]/12 text-[#b0daff]",
+  music: "border-[#f0a6ff]/30 bg-[#f0a6ff]/10 text-[#f0b8ff]",
+  study: "border-[#9fc8ff]/30 bg-[#9fc8ff]/10 text-[#a9ceff]",
+  gaming: "border-[#c9a6ff]/30 bg-[#c9a6ff]/10 text-[#d0b0ff]",
+  games: "border-[#c9a6ff]/30 bg-[#c9a6ff]/10 text-[#d0b0ff]",
+  art: "border-[#ffc48a]/30 bg-[#ffc48a]/10 text-[#ffcb96]",
+  sports: "border-[#8ff0c0]/30 bg-[#8ff0c0]/10 text-[#9bf3c7]",
+  movies: "border-[#ffb3c1]/30 bg-[#ffb3c1]/10 text-[#ffbcc9]",
+  travel: "border-[#9ff0e6]/30 bg-[#9ff0e6]/10 text-[#a9f2e9]",
+  food: "border-[#ffd28a]/30 bg-[#ffd28a]/10 text-[#ffd99a]",
+  tech: "border-[#a6d4ff]/30 bg-[#a6d4ff]/10 text-[#b0daff]",
 };
 const ACTIVITY_FALLBACK = [
-  "border-[#c9ff3d]/35 bg-[#c9ff3d]/12 text-[#d4ff6a]",
-  "border-[#ffc48a]/35 bg-[#ffc48a]/12 text-[#ffcb96]",
-  "border-[#9fc8ff]/35 bg-[#9fc8ff]/12 text-[#a9ceff]",
-  "border-[#f0a6ff]/35 bg-[#f0a6ff]/12 text-[#f0b8ff]",
-  "border-[#8ff0c0]/35 bg-[#8ff0c0]/12 text-[#9bf3c7]",
+  "border-[#c9ff3d]/30 bg-[#c9ff3d]/10 text-[#d4ff6a]",
+  "border-[#ffc48a]/30 bg-[#ffc48a]/10 text-[#ffcb96]",
+  "border-[#9fc8ff]/30 bg-[#9fc8ff]/10 text-[#a9ceff]",
+  "border-[#f0a6ff]/30 bg-[#f0a6ff]/10 text-[#f0b8ff]",
+  "border-[#8ff0c0]/30 bg-[#8ff0c0]/10 text-[#9bf3c7]",
 ];
 
 /** Same activity, same colour, every session. */
@@ -62,16 +62,19 @@ function activityClass(activity: string) {
 }
 
 /**
- * The people-card from the feed reference: one calm dark panel, a people mark
- * and title, then roomy rows with a circular face, the name, one handle line
- * (`@name · N rizz`) and a solid lime Follow control.
+ * People worth following, drawn as one of the app's own cards.
  *
- * The panel sits inside a slowly sweeping border — a 12s gradient turn, not a
- * strobe — which is what makes the section read as a distinct box instead of
- * another slice of the feed. Rows are divided by a hairline so each person is
- * one boxed entry, and the reason they were suggested is drawn as coloured
- * activity chips: matching interests share a colour, so the column can be
- * scanned by activity rather than read line by line.
+ * The previous version was a compressed utility list — 28px faces and 10px
+ * uppercase type — which read as an afterthought next to the posts around it.
+ * This one borrows the vocabulary the rest of the app already uses: a `bg-card`
+ * panel on the app's border colour, a Bricolage heading beside a lime-tinted
+ * icon tile, 36px faces, and pill buttons in the brand signal instead of
+ * square-cornered controls.
+ *
+ * The structure is deliberately the same as every other card in the feed: a
+ * header row, then one entry per person separated by a hairline. Each person
+ * carries the reason they were suggested — matching interests, coloured by
+ * activity so the column can be scanned rather than read.
  */
 export function FollowSuggestions() {
   const { user, profile } = useAuth();
@@ -137,19 +140,27 @@ export function FollowSuggestions() {
     <section
       data-focus-hide
       aria-labelledby="suggested-for-you-heading"
-      className="mb-3 overflow-hidden rounded-xl border border-white/[0.09] bg-[#111113]"
+      className="mb-3 overflow-hidden rounded-2xl border border-border bg-card"
     >
-      {/* A small bordered box: one hairline frame, a quiet heading and compact
-          rows. The sweeping gradient and the 26px shell are gone — the section
-          is a side note in the feed, not a banner competing with the posts. */}
-      <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-2.5 py-1.5">
-        <Users className="h-3 w-3 shrink-0 text-[#8e8981]" strokeWidth={2} aria-hidden="true" />
+      <div className="flex items-center gap-2.5 px-3.5 pb-2.5 pt-3">
+        <span
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/12 text-primary"
+          aria-hidden="true"
+        >
+          <Users className="h-[15px] w-[15px]" strokeWidth={2.2} />
+        </span>
         <h3
           id="suggested-for-you-heading"
-          className="min-w-0 flex-1 truncate text-[10.5px] font-bold uppercase leading-tight tracking-[0.07em] text-[#8e8981]"
+          className="min-w-0 flex-1 truncate font-display text-[13.5px] font-semibold leading-none tracking-[-0.01em] text-foreground"
         >
           {t("suggested_for_you")}
         </h3>
+        <span
+          className="shrink-0 rounded-full border border-border/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums text-muted-foreground"
+          aria-hidden="true"
+        >
+          {data.length}
+        </span>
       </div>
 
       <div>
@@ -165,19 +176,19 @@ export function FollowSuggestions() {
             <div
               key={p.id}
               className={cn(
-                "flex items-center gap-2 px-2 py-1.5 transition-colors hover:bg-white/[0.035]",
-                // A hairline between entries: each person is its own box, and
-                // the line is the seam rather than a heavy card border.
-                index > 0 && "border-t border-white/[0.07]",
+                "flex items-center gap-2.5 px-3.5 py-2.5 transition-colors hover:bg-white/[0.035]",
+                // A hairline seam rather than a boxed card per person: the
+                // panel is already the frame.
+                index > 0 && "border-t border-border/60",
               )}
             >
               <Link
                 to="/u/$username"
                 params={{ username: p.username ?? "" }}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
+                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 <span
-                  className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/[0.08]"
+                  className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-white/10"
                   style={{ background: p.avatar_url ? "#141418" : palette.bg }}
                   aria-hidden={p.avatar_url ? undefined : true}
                 >
@@ -190,22 +201,22 @@ export function FollowSuggestions() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <span className="text-[11px] font-semibold" style={{ color: palette.text }}>
+                    <span className="text-[13px] font-semibold" style={{ color: palette.text }}>
                       {initial}
                     </span>
                   )}
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] font-semibold leading-tight text-[#e9e5dc]">
+                  <span className="block truncate text-[13px] font-semibold leading-tight text-foreground">
                     {p.display_name || p.username}
                   </span>
-                  <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] leading-none">
-                    <span className="truncate text-[#938d84]">@{p.username}</span>
-                    <span aria-hidden className="shrink-0 text-[#5f5b56]">
+                  <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] leading-none">
+                    <span className="truncate text-muted-foreground">@{p.username}</span>
+                    <span aria-hidden className="shrink-0 text-muted-foreground/50">
                       ·
                     </span>
-                    <span className="shrink-0 tabular-nums text-[#938d84]">
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
                       {formatNumber(p.rizz_score)} rizz
                     </span>
                   </span>
@@ -218,7 +229,7 @@ export function FollowSuggestions() {
                         <span
                           key={activity}
                           className={cn(
-                            "rounded-full border px-1.5 py-px text-[8.5px] font-bold uppercase leading-none tracking-[0.04em]",
+                            "rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase leading-none tracking-[0.06em]",
                             activityClass(activity),
                           )}
                         >
@@ -241,16 +252,20 @@ export function FollowSuggestions() {
                 aria-busy={pending || undefined}
                 className={
                   isFollowed
-                    ? "relative inline-flex h-6 min-w-[58px] shrink-0 items-center justify-center gap-1 rounded-lg border border-[#c9ff3d]/30 bg-[#c9ff3d]/10 px-1.5 text-[10px] font-bold text-[#c9ff3d] after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] disabled:opacity-100"
-                    : "relative inline-flex h-6 min-w-[58px] shrink-0 items-center justify-center gap-1 rounded-lg bg-[#c9ff3d] px-1.5 text-[10px] font-bold text-[#0b0b0c] transition-colors after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] hover:bg-[#d6ff62] active:bg-[#bdf22e] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113]"
+                    ? "relative inline-flex h-[30px] min-w-[74px] shrink-0 items-center justify-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 text-[11.5px] font-bold text-primary after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] disabled:opacity-100"
+                    : "relative inline-flex h-[30px] min-w-[74px] shrink-0 items-center justify-center gap-1 rounded-full bg-primary px-3 text-[11.5px] font-bold text-primary-foreground transition-colors after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] hover:brightness-105 active:brightness-95 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                 }
               >
                 {isFollowed ? (
-                  <Check className="h-3 w-3" strokeWidth={2.6} aria-hidden="true" />
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden="true" />
                 ) : pending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.2} aria-hidden="true" />
+                  <Loader2
+                    className="h-3.5 w-3.5 animate-spin"
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <UserPlus className="h-3 w-3" strokeWidth={2.4} aria-hidden="true" />
+                  <UserPlus className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden="true" />
                 )}
                 {isFollowed ? "Following" : "Follow"}
               </button>
