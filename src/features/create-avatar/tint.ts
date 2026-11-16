@@ -71,11 +71,12 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
  * stays 30% darker, which is what stops it looking like a coloured sticker.
  */
 export function tintTexture(
-  source: HTMLImageElement | ImageBitmap,
+  source: HTMLImageElement | ImageBitmap | HTMLCanvasElement,
   hex: string,
+  lightnessScale = 1,
 ): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
-  const key = hex.toLowerCase();
+  const key = `${hex.toLowerCase()}|${lightnessScale.toFixed(2)}`;
   let perSource = cache.get(source as object);
   if (!perSource) {
     perSource = new Map();
@@ -112,7 +113,9 @@ export function tintTexture(
     count += 1;
   }
   const mean = count > 0 ? sum / count : 0.5;
-  const gain = mean > 0.001 ? target.l / mean : 1;
+  // `lightnessScale` pulls a surface below its swatch: skin under full studio
+  // light came out chalky, and a face should not be brighter than the shirt.
+  const gain = mean > 0.001 ? (target.l * lightnessScale) / mean : 1;
 
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] === 0) continue;

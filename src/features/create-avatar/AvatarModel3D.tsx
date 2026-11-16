@@ -51,11 +51,22 @@ export type AvatarModelHandle = {
 const LOAD_TIMEOUT_MS = 15_000;
 
 /**
- * The pet model is authored lying along its own X axis with its head turned, so
- * there is no rotation that makes it stare down the lens. A half turn shows its
- * face instead of its back, which is what reads as "the cat" at preview size.
+ * Standing the pet beside its person.
+ *
+ * Offsets are in the same units as the person's height (2.0), so roughly half a
+ * metre to the side and a step toward the camera: close enough to belong to the
+ * person, far enough that the two silhouettes never overlap.
  */
-const PET_FACING = Math.PI;
+const PET_FACING = 2.36; // three-quarter turn toward the camera
+const PET_OFFSET_X = 0.78;
+const PET_OFFSET_Z = 0.38;
+/**
+ * The shipped pose has the cat's head down, grooming its chest. Rolling the head
+ * and neck bones back up makes it look at the viewer instead — the clip that
+ * drives the pose is deliberately not played here, or it would drag the head
+ * straight back down.
+ */
+const PET_HEAD_LIFT = -0.6;
 
 /**
  * Whether this browser can draw WebGL at all. Kept as its own function because
@@ -112,7 +123,7 @@ function applyAvatarConfig(
   config: Avatar3DConfig,
   track: (item: { dispose?: () => void }) => void,
 ) {
-  const paint = (group: any[], hex: string, fabric?: ClothKind | null) => {
+  const paint = (group: any[], hex: string, fabric?: ClothKind | null, tone = 1) => {
     for (const material of group) {
       const source =
         (fabric ? clothingTexture(fabric) : null) ??
@@ -120,7 +131,7 @@ function applyAvatarConfig(
         material.map;
       if (!source?.image) continue;
       material.userData.avatarSourceMap = source;
-      const canvas = tintTexture(source.image, hex);
+      const canvas = tintTexture(source.image, hex, tone);
       if (!canvas) continue;
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = source.colorSpace;
@@ -135,12 +146,12 @@ function applyAvatarConfig(
       material.needsUpdate = true;
     }
   };
-  paint(materials.skin, config.skin);
+  paint(materials.skin, config.skin, null, 0.72);
   paint(materials.hair, config.hair);
   // The top is the chosen fabric in the chosen colour; the jeans are one pair,
   // so they keep their own indigo instead of following the top's palette.
-  paint(materials.top, config.outfit, outfitStyleFor(config.outfitStyle));
-  paint(materials.bottom, PANT_COLOUR, "pant");
+  paint(materials.top, config.outfit, outfitStyleFor(config.outfitStyle), 1.12);
+  paint(materials.bottom, PANT_COLOUR, "pant", 1.12);
 
   for (const mesh of meshes) {
     if (GLASSES_RE.test(mesh.name ?? "") || GLASSES_RE.test(mesh.material?.name ?? "")) {
@@ -214,6 +225,7 @@ export function AvatarModel3D({
   const cameraRef = useRef<any>(null);
   const petRef = useRef<any>(null);
   const threeRef = useRef<any>(null);
+  const frameRef = useRef<(() => void) | null>(null);
   const tintDisposables = useRef<{ dispose?: () => void }[]>([]);
   const meshesRef = useRef<any[]>([]);
   const materialsRef = useRef<{ skin: any[]; hair: any[]; top: any[]; bottom: any[] }>({
@@ -284,6 +296,9 @@ export function AvatarModel3D({
     applyAvatarConfig(THREE, meshesRef.current, materialsRef.current, config, (item) =>
       tintDisposables.current.push(item),
     );
+    // A scene backdrop needs headroom and floor; a plain studio does not, so the
+    // framing is re-solved when the wall changes.
+    frameRef.current?.();
   }, [config]);
 
   useEffect(() => {
@@ -305,7 +320,6 @@ export function AvatarModel3D({
     // not visible there — that was the "animation is not defined" crash on
     // leaving the tab.
     let animation: any = null;
-    let petAnimation: any = null;
     // One pivot holds the whole cast, so the person and the pet turn together.
     // Rotating each of them about its own centre would slide the pet sideways.
     let pivot: any = null;
@@ -335,16 +349,18 @@ export function AvatarModel3D({
       renderer.setClearAlpha(0);
       // Film-style tone mapping: without it the key light clips the forehead to
       // a white patch and the shadows crush, which is most of "looks flat".
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.06;
+      // Neutral over ACES: ACES desaturates highlights, which is what made skin
+      // read chalky and clothes read grey instead of their colour.
+      renderer.toneMapping = THREE.NeutralToneMapping;
+      renderer.toneMappingExposure = 0.95;
       renderer.domElement.style.width = "100%";
       renderer.domElement.style.height = "100%";
       renderer.domElement.style.display = "block";
       renderer.domElement.style.touchAction = "none";
       mount.appendChild(renderer.domElement);
 
-      scene.add(new THREE.HemisphereLight("#ffffff", "#20242c", 1.9));
-      const key = new THREE.DirectionalLight("#fff7e6", 2.6);
+      scene.add(new THREE.HemisphereLight("#ffffff", "#20242c", 1.25));
+      const key = new THREE.DirectionalLight("#fff7e6", 2.0);
       key.position.set(2.2, 4, 3.4);
       scene.add(key);
       const rim = new THREE.DirectionalLight("#c8ff3d", 0.6);
@@ -352,7 +368,7 @@ export function AvatarModel3D({
       scene.add(rim);
       // Low fill from the near side: it is what lifts the cat out of the floor
       // into readable fur, and keeps the underside of the jaw from going black.
-      const fill = new THREE.DirectionalLight("#e8f0ff", 0.75);
+      const fill = new THREE.DirectionalLight("#e8f0ff", 0.5);
       fill.position.set(-1.6, 0.9, 3.2);
       scene.add(fill);
 
@@ -465,12 +481,17 @@ export function AvatarModel3D({
           const vFov = (camera.fov * Math.PI) / 180;
           const forHeight = fitHeight / 2 / Math.tan(vFov / 2);
           const forWidth = fitWidth / 2 / (Math.tan(vFov / 2) * Math.max(0.0001, camera.aspect));
-          const distance = Math.max(forHeight, forWidth) * 1.12;
+          // Headroom and floor: a figure filling the whole frame is fine on a
+          // plain backdrop, but standing in a scene it needs air above and
+          // ground below, or it looks pasted on.
+          const pad = backgroundFor(configRef.current.background).url ? 1.26 : 1.12;
+          const distance = Math.max(forHeight, forWidth) * pad;
           camera.position.set(lookX, centerY, distance);
           camera.lookAt(lookX, centerY, 0);
           camera.updateProjectionMatrix();
         };
         frameModel();
+        frameRef.current = frameModel;
 
         // A soft contact shadow under the feet. There is no shadow map in this
         // scene — a 4MB model on a phone does not need one — so it is a radial
@@ -586,6 +607,12 @@ export function AvatarModel3D({
               if (disposed) return;
               const pet = petGltf.scene;
               const petBox = measureBounds(pet, THREE);
+              pet.traverse((bone: any) => {
+                const name = bone.name ?? "";
+                if (/j_head/i.test(name)) bone.rotation.x += PET_HEAD_LIFT;
+                else if (/j_neck_1/i.test(name)) bone.rotation.x += PET_HEAD_LIFT * 0.6;
+              });
+              pet.updateMatrixWorld(true);
               const petSize = new THREE.Vector3();
               petBox.getSize(petSize);
               // This cat is broader than it is tall (43 x 21 in its own units), so
@@ -593,8 +620,8 @@ export function AvatarModel3D({
               // as a grey boulder. Scale to whichever side runs out first: a
               // companion at about a quarter of the person's height that never
               // outgrows their stance.
-              const targetHeight = fitHeight * 0.26;
-              const maxWidth = fitHeight * 0.4;
+              const targetHeight = fitHeight * 0.22;
+              const maxWidth = fitHeight * 0.34;
               pet.scale.setScalar(
                 Math.min(
                   targetHeight / Math.max(0.0001, petSize.y),
@@ -609,8 +636,9 @@ export function AvatarModel3D({
               // This model is laid out along its own X axis, so a quarter turn
               // stands it square to the viewer instead of showing a profile.
               pet.rotation.y += PET_FACING;
-              pet.position.x += 0 - petCentre.x;
-              pet.position.z += 0.25 - petCentre.z;
+              pet.position.x += PET_OFFSET_X - petCentre.x;
+              pet.position.z += PET_OFFSET_Z - petCentre.z;
+              // Base on the person's floor line: not floating, not sunk.
               pet.position.y += personNow.min.y - scaled.min.y;
 
               pet.traverse((child: any) => {
@@ -620,12 +648,6 @@ export function AvatarModel3D({
                 disposables.push(item),
               );
 
-              if (petGltf.animations?.length) {
-                const petMixer = new THREE.AnimationMixer(pet);
-                petMixer.clipAction(petGltf.animations[0]).play();
-                petAnimation = petMixer;
-                if (visible) petMixer.update(0);
-              }
               petRef.current = pet;
               pivot?.add(pet);
             } catch {
@@ -644,7 +666,6 @@ export function AvatarModel3D({
         if (!visible) return;
         const delta = Math.min(clock.getDelta(), 0.05);
         animation?.update(delta);
-        petAnimation?.update(delta);
         if (pivot) {
           if (!drag.active) rotation.y += 0.0015;
           pivot.rotation.set(rotation.x, rotation.y, 0);
@@ -662,11 +683,11 @@ export function AvatarModel3D({
       cancelAnimationFrame(frame);
       cleanup.forEach((fn) => fn());
       animation?.stopAllAction?.();
-      petAnimation?.stopAllAction?.();
       disposables.forEach((item) => item.dispose?.());
       meshesRef.current = [];
       materialsRef.current = { skin: [], hair: [], top: [], bottom: [] };
       petRef.current = null;
+      frameRef.current = null;
       pivot = null;
       sceneRef.current = null;
       cameraRef.current = null;
@@ -686,6 +707,7 @@ export function AvatarModel3D({
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          style={{ objectPosition: "50% 55%" }}
         />
       )}
       <div ref={host} className="relative h-full w-full" />
