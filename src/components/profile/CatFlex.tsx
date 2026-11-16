@@ -1,14 +1,15 @@
 /**
- * The "Flexes" tab: the member's cat, turned under their own finger.
+ * The "Flexes" tab: the member and their cat, turned under their own finger.
  *
- * This is the only place the 3D cat is shown to other people. The profile photo
- * stays the photo, and the cat never takes its place — the poster PNG from the
- * last save is the still fallback while the model loads or when WebGL is off.
+ * Both stand in one scene — the person, and the pet at their feet — because a
+ * Flex that showed only the cat read as somebody else's animal. The profile
+ * photo stays the photo; this never takes its place.
  */
 import { useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Download, PawPrint, PenLine } from "lucide-react";
-import { CatModel3D, type CatModelHandle } from "@/features/cat-studio/CatModel3D";
+import { AvatarModel3D, type AvatarModelHandle } from "@/features/create-avatar/AvatarModel3D";
+import { DEFAULT_AVATAR, loadStoredAvatar } from "@/features/create-avatar/config";
 import { CAT_COLOURWAYS, colourwayFor } from "@/features/cat-studio/model";
 import { CAT_SLOTS } from "@/features/cat-studio/config";
 import { catFromProfile } from "@/features/cat-studio/useCatStudio";
@@ -25,10 +26,13 @@ type ProfileRow = Record<string, unknown> & {
 export function CatFlex({ profile, isMe }: { profile: ProfileRow; isMe: boolean }) {
   const cat = useMemo(() => catFromProfile(profile), [profile]);
   const [colourway, setColourway] = useState(() => colourwayFor(cat?.colourway).id);
-  const model = useRef<CatModelHandle>(null);
+  const model = useRef<AvatarModelHandle>(null);
   const [sharing, setSharing] = useState(false);
 
-  const poster = typeof profile.cat_poster_url === "string" ? profile.cat_poster_url : null;
+  // My own look comes from my saved avatar. Another member's avatar colours are
+  // not on the server yet, so their card shows the model's own default look
+  // rather than an empty box.
+  const avatarConfig = useMemo(() => (isMe ? loadStoredAvatar() : DEFAULT_AVATAR), [isMe]);
   const username = profile.username ?? "member";
 
   const worn = useMemo(() => {
@@ -84,7 +88,7 @@ export function CatFlex({ profile, isMe }: { profile: ProfileRow; isMe: boolean 
     <section data-focus-hide className="flex flex-col gap-3">
       <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-[16px] border border-white/10 bg-surface-2">
         <div className="relative aspect-square w-full">
-          <CatModel3D colourway={colourway} handleRef={model} posterUrl={poster} />
+          <AvatarModel3D config={avatarConfig} petColourway={colourway} handleRef={model} />
         </div>
       </div>
 

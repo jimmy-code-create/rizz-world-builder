@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { catFromProfile } from "@/features/cat-studio/useCatStudio";
 import { colourwayFor } from "@/features/cat-studio/model";
+import { CatModel3D } from "@/features/cat-studio/CatModel3D";
 import { CatStudioScreen } from "@/features/cat-studio/CatStudioScreen";
 import { AvatarModel3D } from "./AvatarModel3D";
 import {
@@ -48,6 +49,10 @@ export function CreateAvatarScreen() {
 
   const cat = useMemo(() => catFromProfile(profile), [profile]);
   const petColourway = useMemo(() => colourwayFor(cat?.colourway).id, [cat]);
+  const petPoster = useMemo(() => {
+    const row = profile as Record<string, unknown> | null | undefined;
+    return typeof row?.cat_poster_url === "string" ? row.cat_poster_url : null;
+  }, [profile]);
 
   const morphs = capabilities.morphs;
   const morphGroups = useMemo(
@@ -110,18 +115,25 @@ export function CreateAvatarScreen() {
         </div>
       ) : (
         <div className="mt-3 space-y-3">
-          {/* The stage: the person, arms down, full length, and the pet standing
-              beside their feet in the same scene and light. */}
+          {/* The stage: the person, arms down, full length. The pet gets its own
+              round bubble in the corner rather than standing in the frame — the
+              person keeps the whole stage, and the cat is still one tap from
+              its own tab. */}
           <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[radial-gradient(120%_90%_at_50%_12%,#24261b_0%,#151518_55%,#101012_100%)]">
             <div className="h-[58dvh] min-h-[360px] w-full">
-              <AvatarModel3D
-                config={config}
-                petColourway={cat ? petColourway : null}
-                onCapabilities={setCapabilities}
-              />
+              <AvatarModel3D config={config} onCapabilities={setCapabilities} />
             </div>
 
-            {!cat && (
+            {cat ? (
+              <button
+                type="button"
+                onClick={() => setTab("pets")}
+                aria-label="Your pet — open the Pets tab"
+                className="absolute bottom-3 right-3 h-[84px] w-[84px] overflow-hidden rounded-full border-2 border-[#c9ff3d]/70 bg-black/60 shadow-[0_10px_26px_rgba(0,0,0,0.5)]"
+              >
+                <CatModel3D colourway={petColourway} posterUrl={petPoster} />
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => setTab("pets")}

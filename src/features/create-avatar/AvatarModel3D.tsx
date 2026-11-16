@@ -20,7 +20,7 @@
  * real `glasses` mesh. Those become the controls, and they are reported upwards
  * as capabilities so the screen never shows a slider that does nothing.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Loader2, TriangleAlert, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +44,11 @@ import {
 } from "./config";
 
 type Status = "loading" | "ready" | "missing" | "failed" | "unsupported";
+
+export type AvatarModelHandle = {
+  /** Square transparent PNG of the pose on screen: the person, and their pet. */
+  capturePng: (size?: number) => Promise<Blob | null>;
+};
 
 const LOAD_TIMEOUT_MS = 15_000;
 
@@ -89,11 +94,48 @@ function applyAvatarConfig(
   }
 }
 
+/**
+ * Recolours the cat's body texture, exactly as the Flexes viewer does, so the
+ * pet in this scene is the same animal as the pet on the profile. Only
+ * `Material_81` is touched: the eyes and teeth share the atlas.
+ */
+function recolourPet(
+  pet: any,
+  THREE: any,
+  colourway: ReturnType<typeof colourwayFor>,
+  track: (item: { dispose?: () => void }) => void,
+) {
+  pet.traverse((child: any) => {
+    if (!child.isMesh) return;
+    child.frustumCulled = false;
+    const material = child.material;
+    if (!material) return;
+    const source = material.userData.petSourceMap ?? material.map;
+    if (!source?.image) return;
+    if (material.name !== "Material_81") return;
+    material.userData.petSourceMap = source;
+    const canvas = recolourTexture(source.image, colourway);
+    if (!canvas) return;
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = source.colorSpace;
+    texture.flipY = source.flipY;
+    texture.wrapS = source.wrapS;
+    texture.wrapT = source.wrapT;
+    // The previous colourway's texture is replaced, not stacked: switching
+    // colours ten times must not leave ten textures on the GPU.
+    if (material.userData.petMap) track(material.userData.petMap);
+    material.userData.petMap = texture;
+    material.map = texture;
+    material.needsUpdate = true;
+  });
+}
+
 export function AvatarModel3D({
   config,
   className,
   petColourway,
   onCapabilities,
+  handleRef,
 }: {
   config: Avatar3DConfig;
   className?: string;
@@ -101,8 +143,13 @@ export function AvatarModel3D({
   petColourway?: CatColourwayId | string | null;
   /** What this model can be changed with. Sent once the file is loaded. */
   onCapabilities?: (capabilities: AvatarCapabilities) => void;
+  handleRef?: Ref<AvatarModelHandle>;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<any>(null);
+  const sceneRef = useRef<any>(null);
+  const cameraRef = useRef<any>(null);
+  const petRef = useRef<any>(null);
   const meshesRef = useRef<any[]>([]);
   const materialsRef = useRef<{ skin: any[]; hair: any[]; outfit: any[] }>({
     skin: [],
@@ -114,8 +161,39 @@ export function AvatarModel3D({
   const configRef = useRef(config);
   const petColourwayRef = useRef(petColourway);
 
+  useImperativeHandle(handleRef, () => ({
+    capturePng: async (size = 512) => {
+      const renderer = rendererRef.current;
+      const scene = sceneRef.current;
+      const camera = cameraRef.current;
+      if (!renderer || !scene || !camera) return null;
+      const canvas = renderer.domElement as HTMLCanvasElement;
+      const previousWidth = canvas.width;
+      const previousHeight = canvas.height;
+      renderer.setPixelRatio(1);
+      renderer.setSize(size, size, false);
+      camera.aspect = 1;
+      camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+      const url = canvas.toDataURL("image/png");
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(previousWidth, previousHeight, false);
+      camera.aspect = previousWidth / Math.max(1, previousHeight);
+      camera.updateProjectionMatrix();
+      const response = await fetch(url);
+      return response.blob();
+    },
+  }));
+
   useEffect(() => {
     petColourwayRef.current = petColourway;
+    const pet = petRef.current;
+    if (!pet || !petColourway) return;
+    // A colourway tap recolours the live pet instead of reloading 3MB of cat.
+    void (async () => {
+      const THREE = await import("three");
+      recolourPet(pet, THREE, colourwayFor(petColourway), (item) => item.dispose?.());
+    })();
   }, [petColourway]);
 
   useEffect(() => {
@@ -147,6 +225,9 @@ export function AvatarModel3D({
     // leaving the tab.
     let animation: any = null;
     let petAnimation: any = null;
+    // One pivot holds the whole cast, so the person and the pet turn together.
+    // Rotating each of them about its own centre would slide the pet sideways.
+    let pivot: any = null;
     let frameModel: (() => void) | null = null;
     setStatus("loading");
 
@@ -160,11 +241,14 @@ export function AvatarModel3D({
       if (disposed) return;
 
       const scene = new THREE.Scene();
+      sceneRef.current = scene;
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
       camera.position.set(0, 1.15, 5.4);
       camera.lookAt(0, 1.0, 0);
+      cameraRef.current = camera;
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      rendererRef.current = renderer;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setClearAlpha(0);
       renderer.domElement.style.width = "100%";
@@ -240,7 +324,9 @@ export function AvatarModel3D({
         const gltf = await new GLTFLoader().loadAsync(AVATAR_MODEL_URL);
         if (disposed) return;
         model = gltf.scene;
-        scene.add(model);
+        pivot = new THREE.Group();
+        scene.add(pivot);
+        pivot.add(model);
 
         dropArms(model, THREE);
 
@@ -257,18 +343,23 @@ export function AvatarModel3D({
         model.position.sub(centre);
         model.position.y += 0.02;
 
+        // Measured again *after* the model is put back on the floor. The box
+        // above still carries the export's own offset, and framing from it
+        // aimed the camera at the model's head: the person was drawn from the
+        // middle of the stage down, cropped at the thighs.
+        const placed = new THREE.Box3().setFromObject(model);
+
         // Frame the whole body, head to feet. A fixed camera only fits one
         // aspect ratio: on a phone the feet were cropped and the figure sat in
         // the middle of the box. This solves the distance from the model's own
         // height and the viewport's aspect, and runs again on resize.
-        const fitHeight = centred.max.y - centred.min.y;
+        const fitHeight = placed.max.y - placed.min.y;
         // A little wider than the body: the pet stands to the right of the feet,
         // and reserving that space up front means the view does not jump when
         // the (slower) cat model finishes loading.
-        const fitWidth =
-          Math.max(centred.max.x - centred.min.x, centred.max.z - centred.min.z) * 1.14;
+        const fitWidth = Math.max(placed.max.x - placed.min.x, placed.max.z - placed.min.z) * 1.14;
         const lookX = 0.06;
-        const centerY = (centred.max.y + centred.min.y) / 2 + 0.02;
+        const centerY = (placed.max.y + placed.min.y) / 2;
         frameModel = () => {
           const vFov = (camera.fov * Math.PI) / 180;
           const forHeight = fitHeight / 2 / Math.tan(vFov / 2);
@@ -362,10 +453,10 @@ export function AvatarModel3D({
               // This cat is broader than it is tall (43 x 21 in its own units), so
               // scaling it to a height made it wider than the person and it read
               // as a grey boulder. Scale to whichever side runs out first: a
-              // companion at about a fifth of the person's height that never
+              // companion at about a quarter of the person's height that never
               // outgrows their stance.
-              const targetHeight = fitHeight * 0.32;
-              const maxWidth = fitHeight * 0.46;
+              const targetHeight = fitHeight * 0.24;
+              const maxWidth = fitHeight * 0.38;
               pet.scale.setScalar(
                 Math.min(
                   targetHeight / Math.max(0.0001, petSize.y),
@@ -376,35 +467,20 @@ export function AvatarModel3D({
               const petCentre = new THREE.Vector3();
               scaled.getCenter(petCentre);
               const personNow = new THREE.Box3().setFromObject(model);
-              // At their feet and a step in front, so it overlaps the legs and
-              // reads as standing beside them rather than floating past them.
-              pet.position.x += personNow.max.x * 0.45 - petCentre.x;
-              pet.position.z += 0.42 - petCentre.z;
+              // Beside the right foot and a step further back: in front of the
+              // camera it sat lower than the person and the frame clipped its
+              // base, and a pet standing on the near side of a planted pair of
+              // feet reads as bigger than it is. Same floor line, never floating.
+              pet.position.x += personNow.max.x - petCentre.x;
+              pet.position.z += -0.35 - petCentre.z;
               pet.position.y += personNow.min.y - scaled.min.y;
 
-              const colourway = colourwayFor(petColourwayRef.current);
               pet.traverse((child: any) => {
-                if (!child.isMesh) return;
-                child.frustumCulled = false;
-                const material = child.material;
-                if (!material) return;
-                disposables.push(material);
-                // The cat's own body material: recolour its texture, exactly as
-                // the Flexes viewer does, so both show the same animal.
-                if (material.name === "Material_81" && material.map?.image) {
-                  const canvas = recolourTexture(material.map.image, colourway);
-                  if (canvas) {
-                    const texture = new THREE.CanvasTexture(canvas);
-                    texture.colorSpace = material.map.colorSpace;
-                    texture.flipY = material.map.flipY;
-                    texture.wrapS = material.map.wrapS;
-                    texture.wrapT = material.map.wrapT;
-                    disposables.push(texture);
-                    material.map = texture;
-                    material.needsUpdate = true;
-                  }
-                }
+                if (child.isMesh) disposables.push(child.material);
               });
+              recolourPet(pet, THREE, colourwayFor(petColourwayRef.current), (item) =>
+                disposables.push(item),
+              );
 
               if (petGltf.animations?.length) {
                 const petMixer = new THREE.AnimationMixer(pet);
@@ -412,7 +488,8 @@ export function AvatarModel3D({
                 petAnimation = petMixer;
                 if (visible) petMixer.update(0);
               }
-              scene.add(pet);
+              petRef.current = pet;
+              pivot?.add(pet);
             } catch {
               // No pet model: the person is already on screen, so nothing to say.
             }
@@ -430,9 +507,9 @@ export function AvatarModel3D({
         const delta = Math.min(clock.getDelta(), 0.05);
         animation?.update(delta);
         petAnimation?.update(delta);
-        if (model) {
+        if (pivot) {
           if (!drag.active) rotation.y += 0.0015;
-          model.rotation.set(rotation.x, rotation.y, 0);
+          pivot.rotation.set(rotation.x, rotation.y, 0);
         }
         renderer.render(scene, camera);
       };
@@ -451,6 +528,11 @@ export function AvatarModel3D({
       disposables.forEach((item) => item.dispose?.());
       meshesRef.current = [];
       materialsRef.current = { skin: [], hair: [], outfit: [] };
+      petRef.current = null;
+      pivot = null;
+      sceneRef.current = null;
+      cameraRef.current = null;
+      rendererRef.current = null;
       renderer?.dispose?.();
       if (renderer?.domElement?.parentNode === mount) mount.removeChild(renderer.domElement);
       renderer = null;
