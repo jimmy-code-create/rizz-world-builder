@@ -23,7 +23,12 @@ const FLUENT_ASSETS =
 // cache removes the per-render codepoint walk without holding image data.
 const URL_CACHE = new Map<string, string>();
 
-export function fluentEmojiCodePoints(glyph: string): string {
+export function fluentEmojiCodePoints(glyph: string | null | undefined): string {
+  // `Array.from(undefined)` throws "undefined is not iterable", and a glyph can
+  // arrive missing: a status with no emoji, a reaction row without one, an emoji
+  // column that was never filled. No glyph means no URL, not a crash — this is
+  // called while rendering, so a throw here blanks the whole screen.
+  if (!glyph) return "";
   return (
     Array.from(glyph)
       // Fluent's filenames use at least four hex digits: keycaps are `0023`,
@@ -34,7 +39,8 @@ export function fluentEmojiCodePoints(glyph: string): string {
   );
 }
 
-export function fluentEmojiUrl(glyph: string): string {
+export function fluentEmojiUrl(glyph: string | null | undefined): string {
+  if (!glyph) return "";
   const cached = URL_CACHE.get(glyph);
   if (cached !== undefined) return cached;
   const code = fluentEmojiCodePoints(glyph);
@@ -53,7 +59,7 @@ export const FluentEmoji = memo(function FluentEmoji({
   inline = false,
   fallbackGlyph = false,
 }: {
-  glyph: string;
+  glyph: string | null | undefined;
   size?: number;
   className?: string;
   /** Used only when the emoji carries meaning on its own. */

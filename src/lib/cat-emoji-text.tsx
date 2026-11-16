@@ -52,6 +52,13 @@ export function renderTextWithCatEmoji(
       // Unicode emoji use the same Fluent artwork as the picker. They size in
       // `em`, so a 3rem emoji-only message and a 14px comment both scale.
       return splitUnicodeEmoji(seg.text).map((piece, j) => {
+        const key = `${keyPrefix}-${i}-${j}`;
+        // Plain text first: only an emoji piece has a glyph to look up, and
+        // asking for the URL of a *text* piece is how this file took the feed
+        // and every DM down. `fluentEmojiUrl` walks the glyph with
+        // `Array.from`, and a text piece has no glyph — so the call has to live
+        // inside the branch that has one.
+        if (!piece.emoji) return <span key={key}>{piece.text}</span>;
         // Paint one emoji, never two. The box used to hold the system glyph
         // underneath and the Fluent SVG on top, so on Android a message showed
         // Google's Noto art first and swapped to Microsoft's once the CDN
@@ -61,13 +68,11 @@ export function renderTextWithCatEmoji(
         // Microsoft ships no art for some glyphs (country flags); those keep the
         // system glyph, because a hole in the sentence is worse than a Noto one.
         const fluentArt = Boolean(fluentEmojiUrl(piece.emoji));
-        return piece.emoji ? (
-          <span key={`${keyPrefix}-${i}-${j}`} className="inline-fluent-emoji">
+        return (
+          <span key={key} className="inline-fluent-emoji">
             <FluentEmoji glyph={piece.emoji} size={20} inline decorative={false} />
             {!fluentArt && <span className="inline-fluent-emoji__glyph">{piece.emoji}</span>}
           </span>
-        ) : (
-          <span key={`${keyPrefix}-${i}-${j}`}>{piece.text}</span>
         );
       });
     }
