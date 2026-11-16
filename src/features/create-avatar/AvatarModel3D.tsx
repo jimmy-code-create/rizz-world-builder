@@ -24,6 +24,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "reac
 import { Loader2, TriangleAlert, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CAT_MODEL_URL, colourwayFor, type CatColourwayId } from "@/features/cat-studio/model";
+import { clothingTexture, PANT_COLOUR, outfitStyleFor, type ClothKind } from "./clothes";
 import { dropArms } from "./pose";
 import { petPreviewCanvas } from "./pet";
 import { tintTexture } from "./tint";
@@ -32,7 +33,6 @@ import {
   backgroundFor,
   GLASSES_RE,
   HAIR_MATERIAL_RE,
-  OUTFIT_MATERIAL_RE,
   SKIN_MATERIAL_RE,
   morphGroup,
   morphLabel,
@@ -49,6 +49,13 @@ export type AvatarModelHandle = {
 };
 
 const LOAD_TIMEOUT_MS = 15_000;
+
+/**
+ * The pet model is authored lying along its own X axis with its head turned, so
+ * there is no rotation that makes it stare down the lens. A half turn shows its
+ * face instead of its back, which is what reads as "the cat" at preview size.
+ */
+const PET_FACING = Math.PI;
 
 /**
  * Whether this browser can draw WebGL at all. Kept as its own function because
@@ -101,13 +108,16 @@ function measureBounds(root: any, THREE: any) {
 function applyAvatarConfig(
   THREE: any,
   meshes: any[],
-  materials: { skin: any[]; hair: any[]; outfit: any[] },
+  materials: { skin: any[]; hair: any[]; top: any[]; bottom: any[] },
   config: Avatar3DConfig,
   track: (item: { dispose?: () => void }) => void,
 ) {
-  const paint = (group: any[], hex: string) => {
+  const paint = (group: any[], hex: string, fabric?: ClothKind | null) => {
     for (const material of group) {
-      const source = material.userData.avatarSourceMap ?? material.map;
+      const source =
+        (fabric ? clothingTexture(fabric) : null) ??
+        material.userData.avatarSourceMap ??
+        material.map;
       if (!source?.image) continue;
       material.userData.avatarSourceMap = source;
       const canvas = tintTexture(source.image, hex);
@@ -127,7 +137,10 @@ function applyAvatarConfig(
   };
   paint(materials.skin, config.skin);
   paint(materials.hair, config.hair);
-  paint(materials.outfit, config.outfit);
+  // The top is the chosen fabric in the chosen colour; the jeans are one pair,
+  // so they keep their own indigo instead of following the top's palette.
+  paint(materials.top, config.outfit, outfitStyleFor(config.outfitStyle));
+  paint(materials.bottom, PANT_COLOUR, "pant");
 
   for (const mesh of meshes) {
     if (GLASSES_RE.test(mesh.name ?? "") || GLASSES_RE.test(mesh.material?.name ?? "")) {
@@ -203,10 +216,11 @@ export function AvatarModel3D({
   const threeRef = useRef<any>(null);
   const tintDisposables = useRef<{ dispose?: () => void }[]>([]);
   const meshesRef = useRef<any[]>([]);
-  const materialsRef = useRef<{ skin: any[]; hair: any[]; outfit: any[] }>({
+  const materialsRef = useRef<{ skin: any[]; hair: any[]; top: any[]; bottom: any[] }>({
     skin: [],
     hair: [],
-    outfit: [],
+    top: [],
+    bottom: [],
   });
   const background = backgroundFor(config.background);
   const [status, setStatus] = useState<Status>("loading");
@@ -493,7 +507,8 @@ export function AvatarModel3D({
         const meshes: any[] = [];
         const skin: any[] = [];
         const hair: any[] = [];
-        const outfit: any[] = [];
+        const top: any[] = [];
+        const bottom: any[] = [];
         const targets: AvatarMorphTarget[] = [];
 
         model.traverse((child: any) => {
@@ -506,9 +521,11 @@ export function AvatarModel3D({
             ? skin
             : HAIR_MATERIAL_RE.test(materialName)
               ? hair
-              : OUTFIT_MATERIAL_RE.test(materialName)
-                ? outfit
-                : null;
+              : /^outfit_top/i.test(materialName)
+                ? top
+                : /^outfit_bottom/i.test(materialName)
+                  ? bottom
+                  : null;
 
           // Clone before tinting: one material can be shared by the face and by
           // an accessory, and a face colour must not leak onto an eye card.
@@ -535,11 +552,11 @@ export function AvatarModel3D({
         });
 
         meshesRef.current = meshes;
-        materialsRef.current = { skin, hair, outfit };
+        materialsRef.current = { skin, hair, top, bottom };
         onCapabilities?.({
           skin: skin.length > 0,
           hair: hair.length > 0,
-          outfit: outfit.length > 0,
+          outfit: top.length > 0 || bottom.length > 0,
           glasses: meshes.some(
             (mesh) =>
               GLASSES_RE.test(mesh.name ?? "") || GLASSES_RE.test(mesh.material?.name ?? ""),
@@ -576,8 +593,8 @@ export function AvatarModel3D({
               // as a grey boulder. Scale to whichever side runs out first: a
               // companion at about a quarter of the person's height that never
               // outgrows their stance.
-              const targetHeight = fitHeight * 0.3;
-              const maxWidth = fitHeight * 0.46;
+              const targetHeight = fitHeight * 0.26;
+              const maxWidth = fitHeight * 0.4;
               pet.scale.setScalar(
                 Math.min(
                   targetHeight / Math.max(0.0001, petSize.y),
@@ -588,12 +605,12 @@ export function AvatarModel3D({
               const petCentre = new THREE.Vector3();
               scaled.getCenter(petCentre);
               const personNow = measureBounds(model, THREE);
-              // Beside the right foot and a step further back: in front of the
-              // camera it sat lower than the person and the frame clipped its
-              // base, and a pet standing on the near side of a planted pair of
-              // feet reads as bigger than it is. Same floor line, never floating.
-              pet.position.x += personNow.max.x - petCentre.x;
-              pet.position.z += -0.35 - petCentre.z;
+              // Straight in front of its person, centred, facing the camera.
+              // This model is laid out along its own X axis, so a quarter turn
+              // stands it square to the viewer instead of showing a profile.
+              pet.rotation.y += PET_FACING;
+              pet.position.x += 0 - petCentre.x;
+              pet.position.z += 0.25 - petCentre.z;
               pet.position.y += personNow.min.y - scaled.min.y;
 
               pet.traverse((child: any) => {
@@ -648,7 +665,7 @@ export function AvatarModel3D({
       petAnimation?.stopAllAction?.();
       disposables.forEach((item) => item.dispose?.());
       meshesRef.current = [];
-      materialsRef.current = { skin: [], hair: [], outfit: [] };
+      materialsRef.current = { skin: [], hair: [], top: [], bottom: [] };
       petRef.current = null;
       pivot = null;
       sceneRef.current = null;

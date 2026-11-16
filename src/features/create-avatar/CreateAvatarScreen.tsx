@@ -7,6 +7,7 @@ import { catFromProfile } from "@/features/cat-studio/useCatStudio";
 import { colourwayFor } from "@/features/cat-studio/model";
 import { CatStudioScreen } from "@/features/cat-studio/CatStudioScreen";
 import { AvatarModel3D } from "./AvatarModel3D";
+import { OUTFIT_STYLES } from "./clothes";
 import {
   AVATAR_BACKGROUNDS,
   DEFAULT_AVATAR,
@@ -176,8 +177,21 @@ export function CreateAvatarScreen() {
           )}
 
           {capabilities.outfit && (
+            <ChoiceRow
+              title="Clothes"
+              options={OUTFIT_STYLES.map((entry) => ({
+                id: entry.id,
+                label: entry.name,
+                swatch: entry.swatch,
+              }))}
+              value={config.outfitStyle}
+              onPick={(outfitStyle) => setConfig((current) => ({ ...current, outfitStyle }))}
+            />
+          )}
+
+          {capabilities.outfit && (
             <SwatchRow
-              title="Outfit"
+              title="Colour"
               colours={OUTFIT_COLOURS}
               value={config.outfit}
               onPick={(outfit) => setConfig((current) => ({ ...current, outfit }))}

@@ -9,6 +9,8 @@
  * does ship morph targets still gets sliders — the discovery code stays.
  */
 
+import { outfitStyleFor } from "./clothes";
+
 export const AVATAR_MODEL_URL = "/models/avatar.glb";
 
 /**
@@ -94,8 +96,10 @@ export type Avatar3DConfig = {
   skin: string;
   /** Colour of the `haircut` material, tinted through its strands. */
   hair: string;
-  /** Colour of the `outfit_*` materials, tinted through their weave. */
+  /** Colour of the top, tinted through whatever fabric is chosen. */
   outfit: string;
+  /** Which fabric the top is: one of `OUTFIT_STYLES`. */
+  outfitStyle: string;
   /** Wear the glasses the model ships with. */
   glasses: boolean;
   /** Facial hair on or off, for models that ship a beard morph. */
@@ -110,6 +114,7 @@ export const DEFAULT_AVATAR: Avatar3DConfig = {
   skin: SKIN_TONES[2],
   hair: DEFAULT_HAIR,
   outfit: DEFAULT_OUTFIT,
+  outfitStyle: "denim",
   glasses: true,
   beard: false,
   morphs: {},
@@ -140,6 +145,7 @@ export function sanitizeAvatar3D(input: unknown): Avatar3DConfig {
     skin: hex(raw.skin, DEFAULT_AVATAR.skin),
     hair: hex(raw.hair, DEFAULT_HAIR),
     outfit: hex(raw.outfit, DEFAULT_OUTFIT),
+    outfitStyle: outfitStyleFor(raw.outfitStyle),
     glasses: raw.glasses !== false,
     beard: raw.beard === true,
     morphs,
