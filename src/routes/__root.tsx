@@ -140,6 +140,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/brand/rizz-cat-logo.svg" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      // Every Fluent emoji is a separate SVG on jsDelivr. Without a warm
+      // connection each first glyph paid its own DNS + TLS round trip, which is
+      // the pause before reactions and message emoji appeared.
+      { rel: "preconnect", href: "https://cdn.jsdelivr.net", crossOrigin: "anonymous" },
       {
         // Display: Bricolage Grotesque (editorial, a bit odd on purpose).
         // Text: Instrument Sans. Neither is a default AI-landing-page face.

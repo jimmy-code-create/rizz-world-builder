@@ -110,9 +110,15 @@ export const FluentEmoji = memo(function FluentEmoji({
       {...(decorative ? { "aria-hidden": true as const } : {})}
       width={size}
       height={size}
-      loading={priority ? "eager" : "lazy"}
+      // Small glyphs are reactions, reply rows and the emoji a message ends on:
+      // they are on screen the moment the row paints, so `lazy` + `low` made the
+      // browser fetch them last and the box sat empty until the CDN answered.
+      // That late pop-in read as lag. Anything at or below message size loads
+      // eagerly now; the picker grid, which is genuinely off-screen and huge,
+      // still passes no priority and stays lazy.
+      loading={priority || size <= 40 ? "eager" : "lazy"}
       decoding="async"
-      fetchPriority={priority ? "high" : "low"}
+      fetchPriority={priority ? "high" : size <= 40 ? "auto" : "low"}
       draggable={false}
       className={cn("fluent-emoji", inline && "fluent-emoji--inline", className)}
       style={box}

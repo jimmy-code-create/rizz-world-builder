@@ -50,7 +50,7 @@ await check("Follow is a solid lime control with the add-person glyph", () => {
   assert.ok(source.includes("text-[#0b0b0c]"), "ink sits on the lime, not white");
   assert.ok(source.includes("h-9 min-w-[88px]"), "the control keeps a fixed slot wide enough for Following");
   assert.ok(source.includes("h-10 w-10 shrink-0"), "the avatar is a 40px circle");
-  assert.ok(source.includes("text-[14px] font-semibold"), "the name line reads at a glance");
+  assert.ok(source.includes("text-[14px] font-bold"), "the name line is bold: it is the row's anchor");
 });
 
 await check("a slow follow shows progress instead of a dead button", () => {
