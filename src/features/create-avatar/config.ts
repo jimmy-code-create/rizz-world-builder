@@ -11,6 +11,30 @@
 
 export const AVATAR_MODEL_URL = "/models/avatar.glb";
 
+/**
+ * The two rigged people. Both are Mixamo-named rigs, so the arms-down pose and
+ * the framing maths work on either; they differ in what they carry — the man has
+ * named skin/hair/outfit materials, the woman ships one baked atlas.
+ */
+export const AVATAR_MODELS: Record<AvatarGender, string> = {
+  male: "/models/avatar.glb",
+  female: "/models/girl.glb",
+};
+
+export type AvatarGender = "male" | "female";
+
+/** The wall behind the person. `null` means the app's own studio gradient. */
+export const AVATAR_BACKGROUNDS = [
+  { id: "studio", name: "Studio", url: null, swatch: "#24261b" },
+  { id: "night", name: "Night", url: "/backgrounds/night.webp", swatch: "#2b3f8f" },
+  { id: "brick", name: "Brick", url: "/backgrounds/brick.webp", swatch: "#1f3a6b" },
+  { id: "hills", name: "Hills", url: "/backgrounds/hills.webp", swatch: "#4f9c4a" },
+] as const;
+
+export function backgroundFor(id: string | null | undefined) {
+  return AVATAR_BACKGROUNDS.find((entry) => entry.id === id) ?? AVATAR_BACKGROUNDS[0];
+}
+
 /** Where a member's own avatar is kept until `avatar3d_config` exists. */
 export const AVATAR_STORAGE_KEY = "rizz:avatar3d";
 
@@ -62,11 +86,15 @@ export const DEFAULT_HAIR = "#2b1d14";
 export const DEFAULT_OUTFIT = "#1b1b1f";
 
 export type Avatar3DConfig = {
-  /** Base colour of the skin materials (multiplied over their texture). */
+  /** Which rigged person to show. */
+  gender: AvatarGender;
+  /** The wall behind them: one of `AVATAR_BACKGROUNDS`. */
+  background: string;
+  /** Skin tone, tinted through the skin textures. */
   skin: string;
-  /** Colour of the `haircut` material. */
+  /** Colour of the `haircut` material, tinted through its strands. */
   hair: string;
-  /** Colour of the `outfit_*` materials. */
+  /** Colour of the `outfit_*` materials, tinted through their weave. */
   outfit: string;
   /** Wear the glasses the model ships with. */
   glasses: boolean;
@@ -77,6 +105,8 @@ export type Avatar3DConfig = {
 };
 
 export const DEFAULT_AVATAR: Avatar3DConfig = {
+  gender: "male",
+  background: "studio",
   skin: SKIN_TONES[2],
   hair: DEFAULT_HAIR,
   outfit: DEFAULT_OUTFIT,
@@ -105,6 +135,8 @@ export function sanitizeAvatar3D(input: unknown): Avatar3DConfig {
     }
   }
   return {
+    gender: raw.gender === "female" ? "female" : "male",
+    background: backgroundFor(raw.background).id,
     skin: hex(raw.skin, DEFAULT_AVATAR.skin),
     hair: hex(raw.hair, DEFAULT_HAIR),
     outfit: hex(raw.outfit, DEFAULT_OUTFIT),

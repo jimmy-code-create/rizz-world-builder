@@ -5,11 +5,12 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { catFromProfile } from "@/features/cat-studio/useCatStudio";
 import { colourwayFor } from "@/features/cat-studio/model";
-import { CatModel3D } from "@/features/cat-studio/CatModel3D";
 import { CatStudioScreen } from "@/features/cat-studio/CatStudioScreen";
 import { AvatarModel3D } from "./AvatarModel3D";
 import {
+  AVATAR_BACKGROUNDS,
   DEFAULT_AVATAR,
+  type AvatarGender,
   HAIR_COLOURS,
   NO_CAPABILITIES,
   OUTFIT_COLOURS,
@@ -49,10 +50,7 @@ export function CreateAvatarScreen() {
 
   const cat = useMemo(() => catFromProfile(profile), [profile]);
   const petColourway = useMemo(() => colourwayFor(cat?.colourway).id, [cat]);
-  const petPoster = useMemo(() => {
-    const row = profile as Record<string, unknown> | null | undefined;
-    return typeof row?.cat_poster_url === "string" ? row.cat_poster_url : null;
-  }, [profile]);
+  const setGender = (gender: AvatarGender) => setConfig((current) => ({ ...current, gender }));
 
   const morphs = capabilities.morphs;
   const morphGroups = useMemo(
@@ -115,25 +113,19 @@ export function CreateAvatarScreen() {
         </div>
       ) : (
         <div className="mt-3 space-y-3">
-          {/* The stage: the person, arms down, full length. The pet gets its own
-              round bubble in the corner rather than standing in the frame — the
-              person keeps the whole stage, and the cat is still one tap from
-              its own tab. */}
+          {/* The stage: the person, arms down and full length, with their cat at
+              their feet — the same scene the Flexes card shows, so what is built
+              here is what shows on the profile. */}
           <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[radial-gradient(120%_90%_at_50%_12%,#24261b_0%,#151518_55%,#101012_100%)]">
             <div className="h-[58dvh] min-h-[360px] w-full">
-              <AvatarModel3D config={config} onCapabilities={setCapabilities} />
+              <AvatarModel3D
+                config={config}
+                petColourway={cat ? petColourway : null}
+                onCapabilities={setCapabilities}
+              />
             </div>
 
-            {cat ? (
-              <button
-                type="button"
-                onClick={() => setTab("pets")}
-                aria-label="Your pet — open the Pets tab"
-                className="absolute bottom-3 right-3 h-[84px] w-[84px] overflow-hidden rounded-full border-2 border-[#c9ff3d]/70 bg-black/60 shadow-[0_10px_26px_rgba(0,0,0,0.5)]"
-              >
-                <CatModel3D colourway={petColourway} posterUrl={petPoster} />
-              </button>
-            ) : (
+            {!cat && (
               <button
                 type="button"
                 onClick={() => setTab("pets")}
@@ -143,6 +135,27 @@ export function CreateAvatarScreen() {
               </button>
             )}
           </div>
+
+          <ChoiceRow
+            title="Who"
+            options={[
+              { id: "male", label: "Man" },
+              { id: "female", label: "Woman" },
+            ]}
+            value={config.gender}
+            onPick={(id) => setGender(id as AvatarGender)}
+          />
+
+          <ChoiceRow
+            title="Background"
+            options={AVATAR_BACKGROUNDS.map((entry) => ({
+              id: entry.id,
+              label: entry.name,
+              swatch: entry.swatch,
+            }))}
+            value={config.background}
+            onPick={(background) => setConfig((current) => ({ ...current, background }))}
+          />
 
           {capabilities.skin && (
             <SwatchRow
@@ -242,8 +255,8 @@ export function CreateAvatarScreen() {
 
           {!hasAnything && (
             <p className="px-1 text-[11.5px] leading-snug text-muted-foreground">
-              The control that would be here comes from the model, and this model hasn&apos;t loaded
-              yet.
+              This model carries a single baked texture, so there is no separate skin, hair or
+              outfit to colour. The man&apos;s model has them; the woman&apos;s keeps her own look.
             </p>
           )}
 
@@ -258,6 +271,54 @@ export function CreateAvatarScreen() {
         </div>
       )}
     </div>
+  );
+}
+
+function ChoiceRow({
+  title,
+  options,
+  value,
+  onPick,
+}: {
+  title: string;
+  options: { id: string; label: string; swatch?: string }[];
+  value: string;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-white/[0.07] bg-surface-2 p-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+        {title}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {options.map((entry) => {
+          const active = entry.id === value;
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => onPick(entry.id)}
+              aria-pressed={active}
+              className={cn(
+                "flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition-colors",
+                active
+                  ? "border-primary/60 bg-primary/15 text-primary"
+                  : "border-white/12 text-muted-foreground hover:border-white/25 hover:text-foreground",
+              )}
+            >
+              {entry.swatch && (
+                <span
+                  aria-hidden="true"
+                  className="h-3 w-3 rounded-full border border-white/20"
+                  style={{ background: entry.swatch }}
+                />
+              )}
+              {entry.label}
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

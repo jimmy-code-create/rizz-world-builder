@@ -30,8 +30,10 @@ import {
   type CatColourwayId,
 } from "@/features/cat-studio/model";
 import { dropArms } from "./pose";
+import { tintTexture } from "./tint";
 import {
-  AVATAR_MODEL_URL,
+  AVATAR_MODELS,
+  backgroundFor,
   GLASSES_RE,
   HAIR_MATERIAL_RE,
   OUTFIT_MATERIAL_RE,
@@ -70,15 +72,66 @@ function webglAvailable() {
   }
 }
 
-/** Applies the saved look to a loaded model. */
+/**
+ * The model's bounds, measured now.
+ *
+ * A SkinnedMesh caches its own bounding box the first time it is measured, in
+ * whatever pose that was. Measure the T-pose once and every later box reports
+ * the arms-out width even after they are dropped — which framed a smaller
+ * person and parked the pet out to the side. Clearing the cache forces a fresh
+ * box from the current pose.
+ */
+function measureBounds(root: any, THREE: any) {
+  // Bounds are read after the model has been moved, and a child's world matrix
+  // is only rebuilt on render, so refresh the tree first — without this the box
+  // describes where the model used to be.
+  root.updateMatrixWorld(true);
+  root.traverse((child: any) => {
+    if (!child.isSkinnedMesh) return;
+    child.boundingBox = null;
+    child.boundingSphere = null;
+  });
+  return new THREE.Box3().setFromObject(root);
+}
+
+/**
+ * Applies the saved look to a loaded model.
+ *
+ * Colour goes through the texture (see `tint.ts`) rather than `material.color`,
+ * which was the "layer" look: multiplying a detailed texture by a flat colour
+ * flattens it. Each material keeps its original map in `userData` so the next
+ * swatch paints from the artist's texture, not from the last colour.
+ */
 function applyAvatarConfig(
+  THREE: any,
   meshes: any[],
   materials: { skin: any[]; hair: any[]; outfit: any[] },
   config: Avatar3DConfig,
+  track: (item: { dispose?: () => void }) => void,
 ) {
-  for (const material of materials.skin) material.color?.set?.(config.skin);
-  for (const material of materials.hair) material.color?.set?.(config.hair);
-  for (const material of materials.outfit) material.color?.set?.(config.outfit);
+  const paint = (group: any[], hex: string) => {
+    for (const material of group) {
+      const source = material.userData.avatarSourceMap ?? material.map;
+      if (!source?.image) continue;
+      material.userData.avatarSourceMap = source;
+      const canvas = tintTexture(source.image, hex);
+      if (!canvas) continue;
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = source.colorSpace;
+      texture.flipY = source.flipY;
+      texture.wrapS = source.wrapS;
+      texture.wrapT = source.wrapT;
+      if (material.userData.avatarTint) track(material.userData.avatarTint);
+      material.userData.avatarTint = texture;
+      material.map = texture;
+      // The tone now lives in the pixels, so the flat multiplier stays neutral.
+      material.color?.set?.("#ffffff");
+      material.needsUpdate = true;
+    }
+  };
+  paint(materials.skin, config.skin);
+  paint(materials.hair, config.hair);
+  paint(materials.outfit, config.outfit);
 
   for (const mesh of meshes) {
     if (GLASSES_RE.test(mesh.name ?? "") || GLASSES_RE.test(mesh.material?.name ?? "")) {
@@ -150,12 +203,15 @@ export function AvatarModel3D({
   const sceneRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
   const petRef = useRef<any>(null);
+  const threeRef = useRef<any>(null);
+  const tintDisposables = useRef<{ dispose?: () => void }[]>([]);
   const meshesRef = useRef<any[]>([]);
   const materialsRef = useRef<{ skin: any[]; hair: any[]; outfit: any[] }>({
     skin: [],
     hair: [],
     outfit: [],
   });
+  const background = backgroundFor(config.background);
   const [status, setStatus] = useState<Status>("loading");
   const [attempt, setAttempt] = useState(0);
   const configRef = useRef(config);
@@ -200,9 +256,23 @@ export function AvatarModel3D({
     if (!webglAvailable()) setStatus("unsupported");
   }, []);
 
+  // Textures painted by a swatch are owned here, not by the render loop, so
+  // leaving the screen disposes every one of them.
+  useEffect(() => {
+    const owned = tintDisposables.current;
+    return () => {
+      owned.forEach((item) => item.dispose?.());
+      tintDisposables.current = [];
+    };
+  }, []);
+
   useEffect(() => {
     configRef.current = config;
-    applyAvatarConfig(meshesRef.current, materialsRef.current, config);
+    const THREE = threeRef.current;
+    if (!THREE) return;
+    applyAvatarConfig(THREE, meshesRef.current, materialsRef.current, config, (item) =>
+      tintDisposables.current.push(item),
+    );
   }, [config]);
 
   useEffect(() => {
@@ -237,6 +307,7 @@ export function AvatarModel3D({
 
     void (async () => {
       const THREE = await import("three");
+      threeRef.current = THREE;
       const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
       if (disposed) return;
 
@@ -251,19 +322,28 @@ export function AvatarModel3D({
       rendererRef.current = renderer;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setClearAlpha(0);
+      // Film-style tone mapping: without it the key light clips the forehead to
+      // a white patch and the shadows crush, which is most of "looks flat".
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.06;
       renderer.domElement.style.width = "100%";
       renderer.domElement.style.height = "100%";
       renderer.domElement.style.display = "block";
       renderer.domElement.style.touchAction = "none";
       mount.appendChild(renderer.domElement);
 
-      scene.add(new THREE.HemisphereLight("#ffffff", "#20242c", 1.7));
-      const key = new THREE.DirectionalLight("#fff7e6", 2.0);
+      scene.add(new THREE.HemisphereLight("#ffffff", "#20242c", 1.9));
+      const key = new THREE.DirectionalLight("#fff7e6", 2.6);
       key.position.set(2.2, 4, 3.4);
       scene.add(key);
-      const rim = new THREE.DirectionalLight("#c8ff3d", 0.5);
+      const rim = new THREE.DirectionalLight("#c8ff3d", 0.6);
       rim.position.set(-3, 1.4, -2.4);
       scene.add(rim);
+      // Low fill from the near side: it is what lifts the cat out of the floor
+      // into readable fur, and keeps the underside of the jaw from going black.
+      const fill = new THREE.DirectionalLight("#e8f0ff", 0.75);
+      fill.position.set(-1.6, 0.9, 3.2);
+      scene.add(fill);
 
       const resize = () => {
         const rect = mount.getBoundingClientRect();
@@ -321,23 +401,33 @@ export function AvatarModel3D({
 
       let model: any = null;
       try {
-        const gltf = await new GLTFLoader().loadAsync(AVATAR_MODEL_URL);
+        const gltf = await new GLTFLoader().loadAsync(
+          AVATAR_MODELS[configRef.current.gender] ?? AVATAR_MODELS.male,
+        );
         if (disposed) return;
         model = gltf.scene;
         pivot = new THREE.Group();
         scene.add(pivot);
         pivot.add(model);
 
+        // Some exports are authored Z-up, so the model arrives lying on its back
+        // (deeper than it is tall). Stand it up before anything measures it.
+        model.updateMatrixWorld(true);
+        const lying = measureBounds(model, THREE);
+        const lyingSize = new THREE.Vector3();
+        lying.getSize(lyingSize);
+        if (lyingSize.y < lyingSize.z) model.rotation.x = Math.PI / 2;
+
         dropArms(model, THREE);
 
         // Frame whatever arrived: a metre-tall character and a 100-unit export
         // both end up the same height on screen.
-        const box = new THREE.Box3().setFromObject(model);
+        const box = measureBounds(model, THREE);
         const size = new THREE.Vector3();
         box.getSize(size);
         const scale = 2.0 / Math.max(0.0001, size.y);
         model.scale.setScalar(scale);
-        const centred = new THREE.Box3().setFromObject(model);
+        const centred = measureBounds(model, THREE);
         const centre = new THREE.Vector3();
         centred.getCenter(centre);
         model.position.sub(centre);
@@ -347,7 +437,7 @@ export function AvatarModel3D({
         // above still carries the export's own offset, and framing from it
         // aimed the camera at the model's head: the person was drawn from the
         // middle of the stage down, cropped at the thighs.
-        const placed = new THREE.Box3().setFromObject(model);
+        const placed = measureBounds(model, THREE);
 
         // Frame the whole body, head to feet. A fixed camera only fits one
         // aspect ratio: on a phone the feet were cropped and the figure sat in
@@ -370,6 +460,38 @@ export function AvatarModel3D({
           camera.updateProjectionMatrix();
         };
         frameModel();
+
+        // A soft contact shadow under the feet. There is no shadow map in this
+        // scene — a 4MB model on a phone does not need one — so it is a radial
+        // gradient on a plane, which is the cheap way to stop the figure from
+        // floating above the floor line.
+        const shadowCanvas = document.createElement("canvas");
+        shadowCanvas.width = 128;
+        shadowCanvas.height = 128;
+        const shadowCtx = shadowCanvas.getContext("2d");
+        if (shadowCtx) {
+          const gradient = shadowCtx.createRadialGradient(64, 64, 4, 64, 64, 62);
+          gradient.addColorStop(0, "rgba(0,0,0,0.5)");
+          gradient.addColorStop(0.5, "rgba(0,0,0,0.24)");
+          gradient.addColorStop(1, "rgba(0,0,0,0)");
+          shadowCtx.fillStyle = gradient;
+          shadowCtx.fillRect(0, 0, 128, 128);
+          const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
+          const shadowMaterial = new THREE.MeshBasicMaterial({
+            map: shadowTexture,
+            transparent: true,
+            depthWrite: false,
+          });
+          const shadowGeometry = new THREE.PlaneGeometry(
+            Math.max(0.4, placed.max.x - placed.min.x) * 2.1,
+            Math.max(0.4, placed.max.z - placed.min.z) * 3.2,
+          );
+          const shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
+          shadow.rotation.x = -Math.PI / 2;
+          shadow.position.set(0, placed.min.y + 0.002, 0.02);
+          scene.add(shadow);
+          disposables.push(shadowGeometry, shadowMaterial, shadowTexture);
+        }
 
         const meshes: any[] = [];
         const skin: any[] = [];
@@ -434,7 +556,9 @@ export function AvatarModel3D({
           animation = mixer;
         }
 
-        applyAvatarConfig(meshes, materialsRef.current, configRef.current);
+        applyAvatarConfig(THREE, meshes, materialsRef.current, configRef.current, (item) =>
+          tintDisposables.current.push(item),
+        );
         window.clearTimeout(timeout);
         setStatus("ready");
 
@@ -447,7 +571,7 @@ export function AvatarModel3D({
               const petGltf = await new GLTFLoader().loadAsync(CAT_MODEL_URL);
               if (disposed) return;
               const pet = petGltf.scene;
-              const petBox = new THREE.Box3().setFromObject(pet);
+              const petBox = measureBounds(pet, THREE);
               const petSize = new THREE.Vector3();
               petBox.getSize(petSize);
               // This cat is broader than it is tall (43 x 21 in its own units), so
@@ -463,10 +587,10 @@ export function AvatarModel3D({
                   maxWidth / Math.max(0.0001, Math.max(petSize.x, petSize.z)),
                 ),
               );
-              const scaled = new THREE.Box3().setFromObject(pet);
+              const scaled = measureBounds(pet, THREE);
               const petCentre = new THREE.Vector3();
               scaled.getCenter(petCentre);
-              const personNow = new THREE.Box3().setFromObject(model);
+              const personNow = measureBounds(model, THREE);
               // Beside the right foot and a step further back: in front of the
               // camera it sat lower than the person and the frame clipped its
               // base, and a pet standing on the near side of a planted pair of
@@ -538,11 +662,19 @@ export function AvatarModel3D({
       renderer = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt]);
+  }, [attempt, config.gender]);
 
   return (
-    <div className={cn("relative h-full w-full", className)}>
-      <div ref={host} className="h-full w-full" />
+    <div className={cn("relative h-full w-full overflow-hidden", className)}>
+      {background.url && (
+        <img
+          src={background.url}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+      )}
+      <div ref={host} className="relative h-full w-full" />
 
       {status === "loading" && (
         <div className="absolute inset-0 grid place-items-center text-muted-foreground">
