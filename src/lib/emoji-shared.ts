@@ -68,7 +68,7 @@ export function useJoinedEmoji(_realmId?: string | null) {
     const payload = available.data;
     if (!payload) return [];
     const rows: SharedEmoji[] = [];
-    for (const emoji of payload.private) {
+    for (const emoji of payload.private ?? []) {
       rows.push({
         id: emoji.id,
         realm_id: "",
@@ -80,8 +80,8 @@ export function useJoinedEmoji(_realmId?: string | null) {
         external: true,
       });
     }
-    for (const realm of payload.realms) {
-      for (const emoji of realm.emojis) {
+    for (const realm of payload.realms ?? []) {
+      for (const emoji of realm.emojis ?? []) {
         rows.push({
           id: emoji.id,
           realm_id: realm.id,

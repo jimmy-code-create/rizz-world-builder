@@ -80,7 +80,7 @@ export function FollowSuggestions() {
   const [followed, setFollowed] = useState<string[]>([]);
 
   const { data } = useQuery({
-    queryKey: ["follow-suggestions", user?.id, profile?.interests.join(",")],
+    queryKey: ["follow-suggestions", user?.id, (profile?.interests ?? []).join(",")],
     enabled: !!user,
     queryFn: async () => {
       const { data: following } = await supabase
@@ -159,7 +159,7 @@ export function FollowSuggestions() {
             const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
             const seed = p.username || p.display_name || p.id;
             const palette = getAvatarPalette(seed);
-            const shared = p.sharedInterests.slice(0, 2);
+            const shared = (p.sharedInterests ?? []).slice(0, 2);
             const pending = followMut.isPending && followMut.variables === p.id;
             const isFollowed = followed.includes(p.id);
 

@@ -103,9 +103,9 @@ export function emptyAvailableEmojis(): AvailableEmojiResponse {
 export function emojiIndex(response: AvailableEmojiResponse | undefined) {
   const byId = new Map<string, AvailableEmoji & { realm_id: string | null }>();
   if (!response) return byId;
-  for (const emoji of response.private) byId.set(emoji.id, { ...emoji, realm_id: null });
-  for (const realm of response.realms) {
-    for (const emoji of realm.emojis) byId.set(emoji.id, { ...emoji, realm_id: realm.id });
+  for (const emoji of response.private ?? []) byId.set(emoji.id, { ...emoji, realm_id: null });
+  for (const realm of response.realms ?? []) {
+    for (const emoji of realm.emojis ?? []) byId.set(emoji.id, { ...emoji, realm_id: realm.id });
   }
   return byId;
 }

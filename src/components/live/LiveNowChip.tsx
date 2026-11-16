@@ -34,7 +34,7 @@ export function LiveNowChip({
 
   const hosts = useMemo(() => {
     const seen = new Map<string, LivePerson>();
-    for (const stream of data.streams) seen.set(stream.host.id, stream.host);
+    for (const stream of data.streams ?? []) seen.set(stream.host.id, stream.host);
     return [...seen.values()];
   }, [data.streams]);
 

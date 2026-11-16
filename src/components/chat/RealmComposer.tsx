@@ -120,7 +120,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
       const map = new Map<string, string>();
       for (const emoji of available.data?.private ?? []) map.set(emoji.id, emoji.url);
       for (const realm of available.data?.realms ?? []) {
-        for (const emoji of realm.emojis) map.set(emoji.id, emoji.url);
+        for (const emoji of realm.emojis ?? []) map.set(emoji.id, emoji.url);
       }
       return map;
     }, [available.data]);

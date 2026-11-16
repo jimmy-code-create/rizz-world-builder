@@ -259,7 +259,7 @@ export function groupReactions(
   userId?: string | null,
 ): SharedReactionGroup[] {
   const map = new Map<string, SharedReactionGroup>();
-  for (const row of rows) {
+  for (const row of rows ?? []) {
     const group = map.get(row.emoji) ?? { key: row.emoji, count: 0, mine: false, superCount: 0 };
     const isSuper = row.kind === "super";
     group.count += 1;

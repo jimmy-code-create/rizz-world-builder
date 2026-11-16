@@ -200,8 +200,8 @@ function RizzEmojiPanelImpl({
       }));
     if (privateCells.length)
       groups.push({ key: "private", label: "Your emoji", cells: privateCells });
-    for (const realm of payload.realms) {
-      const cells: Cell[] = realm.emojis
+    for (const realm of payload.realms ?? []) {
+      const cells: Cell[] = (realm.emojis ?? [])
         .filter((emoji) => matches(emoji.name))
         .map((emoji) => ({
           key: `r:${emoji.id}`,
@@ -218,7 +218,7 @@ function RizzEmojiPanelImpl({
   const hasRealmEmoji = useMemo(
     () =>
       (available.data?.private.length ?? 0) > 0 ||
-      (available.data?.realms.some((realm) => realm.emojis.length > 0) ?? false),
+      (available.data?.realms.some((realm) => (realm.emojis ?? []).length > 0) ?? false),
     [available.data],
   );
 

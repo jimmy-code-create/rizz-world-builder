@@ -483,7 +483,7 @@ const ChatDockPanelImpl = ({
     const map = new Map<string, string>();
     for (const emoji of available.data?.private ?? []) map.set(emoji.id, emoji.url);
     for (const realm of available.data?.realms ?? []) {
-      for (const emoji of realm.emojis) map.set(emoji.id, emoji.url);
+      for (const emoji of realm.emojis ?? []) map.set(emoji.id, emoji.url);
     }
     return map;
   }, [available.data]);
@@ -524,7 +524,7 @@ const ChatDockPanelImpl = ({
     }
     for (const realm of available.data?.realms ?? []) {
       if (emojiPack !== `realm:${realm.id}`) continue;
-      for (const emoji of realm.emojis) {
+      for (const emoji of realm.emojis ?? []) {
         if (term && !emoji.name.toLowerCase().includes(term)) continue;
         cells.push({
           kind: "realm",

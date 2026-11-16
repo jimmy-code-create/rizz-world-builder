@@ -177,7 +177,7 @@ function DMPage() {
     const map = new Map<string, string>();
     for (const emoji of availableEmoji.data?.private ?? []) map.set(emoji.id, emoji.url);
     for (const realm of availableEmoji.data?.realms ?? []) {
-      for (const emoji of realm.emojis) map.set(emoji.id, emoji.url);
+      for (const emoji of realm.emojis ?? []) map.set(emoji.id, emoji.url);
     }
     return map;
   }, [availableEmoji.data]);

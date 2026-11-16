@@ -146,7 +146,9 @@ function insertOptimistic(
   return {
     private: base.private,
     realms: base.realms.map((realm) =>
-      realm.id === pending.realmId ? { ...realm, emojis: [entry, ...realm.emojis] } : realm,
+      realm.id === pending.realmId
+        ? { ...realm, emojis: [entry, ...(realm.emojis ?? [])] }
+        : realm,
     ),
   };
 }
@@ -164,7 +166,7 @@ function replacePending(current: AvailableEmojiResponse | undefined, emoji: Avai
   return {
     private: current.private.filter((row) => !isPending(row)),
     realms: current.realms.map((realm) => {
-      const emojis = realm.emojis.filter((row) => !isPending(row));
+      const emojis = (realm.emojis ?? []).filter((row) => !isPending(row));
       return {
         ...realm,
         emojis: emojis.some((row) => row.id === emoji.id) ? emojis : [...emojis, emoji],
@@ -179,7 +181,7 @@ function removeById(current: AvailableEmojiResponse | undefined, id: string) {
     private: current.private.filter((emoji) => emoji.id !== id),
     realms: current.realms.map((realm) => ({
       ...realm,
-      emojis: realm.emojis.filter((emoji) => emoji.id !== id),
+      emojis: (realm.emojis ?? []).filter((emoji) => emoji.id !== id),
     })),
   };
 }
