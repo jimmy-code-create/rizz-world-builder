@@ -293,8 +293,20 @@ export function AppShell() {
       if (frame) cancelAnimationFrame(frame);
     };
   }, [path]);
+  // Pages whose own layout is a grid, not a column. The 3xl cap was squeezing
+  // them into a phone strip in the middle of a 1440px desk; each of these either
+  // declares a wider container or fills the space with cards.
   const isWidePage =
-    path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
+    path === "/feed" ||
+    path === "/_app/feed" ||
+    path === "/badges" ||
+    path === "/_app/badges" ||
+    path === "/explore" ||
+    path === "/shop" ||
+    path === "/leaderboard" ||
+    path === "/dms" ||
+    path === "/notifications" ||
+    path.startsWith("/settings");
 
   // Live discovery lives in the chip and Create > Go live, so the studio can
   // open from any tab. The chip dispatches this event instead of the shell
@@ -788,130 +800,127 @@ export function AppShell() {
         className="max-h-[85dvh]"
         bodyClassName="px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
-          <SheetHeader className="text-left pt-2 pr-8">
-            <div className="flex items-center justify-between gap-3">
-              <SheetTitle className="font-display text-xl">{t("everything_on_rizz")}</SheetTitle>
-              <button
-                type="button"
-                onClick={() => setEditShortcuts((editing) => !editing)}
-                className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {editShortcuts ? t("done") : t("edit")}
-              </button>
-            </div>
-            {editShortcuts && <p className="mt-1 text-xs text-muted-foreground">{t("pin_hint")}</p>}
-          </SheetHeader>
+        <SheetHeader className="text-left pt-2 pr-8">
+          <div className="flex items-center justify-between gap-3">
+            <SheetTitle className="font-display text-xl">{t("everything_on_rizz")}</SheetTitle>
+            <button
+              type="button"
+              onClick={() => setEditShortcuts((editing) => !editing)}
+              className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {editShortcuts ? t("done") : t("edit")}
+            </button>
+          </div>
+          {editShortcuts && <p className="mt-1 text-xs text-muted-foreground">{t("pin_hint")}</p>}
+        </SheetHeader>
 
-
-          {/* What's happening */}
-          <Link
-            to="/pulse"
-            className="mt-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
-              <Activity className="h-5 w-5" />
+        {/* What's happening */}
+        <Link
+          to="/pulse"
+          className="mt-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+            <Activity className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-foreground">{t("whats_happening")}</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {t("pulse_subtitle")}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-foreground">
-                {t("whats_happening")}
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {t("pulse_subtitle")}
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </Link>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </Link>
 
-          {/* Profile card */}
-          <Link
-            to="/u/$username"
-            params={{ username: profile?.username ?? "" }}
-            className="mt-3 flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-transparent p-3 transition-colors hover:bg-white/[0.04] min-h-[56px]"
-          >
-            <UserAvatar
-              src={profile?.avatar_url}
-              fallback={initial}
-              size="lg"
-              presence={presence.status}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-foreground">
-                {profile?.display_name || profile?.username}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                @{profile?.username} · {t("view_profile")}
-              </p>
-            </div>
-          </Link>
+        {/* Profile card */}
+        <Link
+          to="/u/$username"
+          params={{ username: profile?.username ?? "" }}
+          className="mt-3 flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-transparent p-3 transition-colors hover:bg-white/[0.04] min-h-[56px]"
+        >
+          <UserAvatar
+            src={profile?.avatar_url}
+            fallback={initial}
+            size="lg"
+            presence={presence.status}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate text-foreground">
+              {profile?.display_name || profile?.username}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              @{profile?.username} · {t("view_profile")}
+            </p>
+          </div>
+        </Link>
 
-          {/* Pinned + recently used shortcuts */}
-          {!editShortcuts && (pinnedDests.length > 0 || recentDests.length > 0) && (
-            <div className="mt-4 space-y-3">
-              {pinnedDests.length > 0 && (
-                <section>
-                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
-                    <Pin className="h-3 w-3" /> {t("pinned")}
-                  </h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {pinnedDests.map((key) => (
-                      <ShortcutChip key={key} destKey={key} />
-                    ))}
-                  </div>
-                </section>
+        {/* Pinned + recently used shortcuts */}
+        {!editShortcuts && (pinnedDests.length > 0 || recentDests.length > 0) && (
+          <div className="mt-4 space-y-3">
+            {pinnedDests.length > 0 && (
+              <section>
+                <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
+                  <Pin className="h-3 w-3" /> {t("pinned")}
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {pinnedDests.map((key) => (
+                    <ShortcutChip key={key} destKey={key} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+
+        {/* Grouped destinations */}
+        {moreGroups.map((group) => (
+          <section key={group.titleKey} className="mt-4">
+            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
+              {t(group.titleKey)}
+            </h3>
+            <div className="grid grid-cols-4 gap-2">
+              {group.items.map((item) =>
+                item.kind === "action" ? (
+                  <button
+                    key={item.action}
+                    type="button"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      setComposerOpen(true);
+                    }}
+                    className={navTile(false)}
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span className="text-[11px] font-medium text-center leading-tight">
+                      {t("create_post")}
+                    </span>
+                  </button>
+                ) : (
+                  <ShortcutTile
+                    key={item.key}
+                    destKey={item.key}
+                    active={isActive(item.key)}
+                    editing={editShortcuts}
+                    pinned={pinnedDests.includes(item.key)}
+                    badge={
+                      item.key === "/notifications" && unreadCount > 0 ? unreadBadge : undefined
+                    }
+                    onTogglePin={handleTogglePin}
+                  />
+                ),
               )}
             </div>
-          )}
+          </section>
+        ))}
 
-          {/* Grouped destinations */}
-          {moreGroups.map((group) => (
-            <section key={group.titleKey} className="mt-4">
-              <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-400">
-                {t(group.titleKey)}
-              </h3>
-              <div className="grid grid-cols-4 gap-2">
-                {group.items.map((item) =>
-                  item.kind === "action" ? (
-                    <button
-                      key={item.action}
-                      type="button"
-                      onClick={() => {
-                        setMoreOpen(false);
-                        setComposerOpen(true);
-                      }}
-                      className={navTile(false)}
-                    >
-                      <Plus className="h-5 w-5" />
-                      <span className="text-[11px] font-medium text-center leading-tight">
-                        {t("create_post")}
-                      </span>
-                    </button>
-                  ) : (
-                    <ShortcutTile
-                      key={item.key}
-                      destKey={item.key}
-                      active={isActive(item.key)}
-                      editing={editShortcuts}
-                      pinned={pinnedDests.includes(item.key)}
-                      badge={
-                        item.key === "/notifications" && unreadCount > 0 ? unreadBadge : undefined
-                      }
-                      onTogglePin={handleTogglePin}
-                    />
-                  ),
-                )}
-              </div>
-            </section>
-          ))}
-
-          <button
-            onClick={() => {
-              setMoreOpen(false);
-              setMobileSignOutConfirm(true);
-            }}
-            className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 p-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive font-medium text-sm transition-colors hover:bg-destructive/20"
-          >
-            <LogOut className="h-4 w-4" /> {t("sign_out")}
-          </button>
+        <button
+          onClick={() => {
+            setMoreOpen(false);
+            setMobileSignOutConfirm(true);
+          }}
+          className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 p-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive font-medium text-sm transition-colors hover:bg-destructive/20"
+        >
+          <LogOut className="h-4 w-4" /> {t("sign_out")}
+        </button>
       </SwipeSheet>
 
       <AlertDialog open={mobileSignOutConfirm} onOpenChange={setMobileSignOutConfirm}>

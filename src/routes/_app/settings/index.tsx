@@ -52,19 +52,54 @@ function SettingsHubPage() {
 
   // Built per render (not module scope) so labels follow the live language.
   const SECTIONS: SettingsSection[] = [
-    { to: "/settings/profile", label: t("profile"), description: t("settings_profile_desc"), icon: UserRound },
+    {
+      to: "/settings/profile",
+      label: t("profile"),
+      description: t("settings_profile_desc"),
+      icon: UserRound,
+    },
     {
       to: "/purify",
       label: "Purify",
       description: "$1 / month · gradients, banner photos, GIFs",
       icon: Crown,
     },
-    { to: "/settings/appearance", label: t("appearance"), description: t("settings_appearance_desc"), icon: Palette },
-    { to: "/settings/notifications", label: t("notifications"), description: t("settings_notifications_desc"), icon: Bell },
-    { to: "/settings/voice", label: t("settings_voice_label"), description: t("settings_voice_desc"), icon: Volume2 },
-    { to: "/settings/preferences", label: t("preferences"), description: t("settings_preferences_desc"), icon: Sliders },
-    { to: "/settings/blocked", label: t("settings_blocked_label"), description: t("settings_blocked_desc"), icon: Shield },
-    { to: "/settings/account", label: t("settings_account_label"), description: t("settings_account_desc"), icon: UserCog },
+    {
+      to: "/settings/appearance",
+      label: t("appearance"),
+      description: t("settings_appearance_desc"),
+      icon: Palette,
+    },
+    {
+      to: "/settings/notifications",
+      label: t("notifications"),
+      description: t("settings_notifications_desc"),
+      icon: Bell,
+    },
+    {
+      to: "/settings/voice",
+      label: t("settings_voice_label"),
+      description: t("settings_voice_desc"),
+      icon: Volume2,
+    },
+    {
+      to: "/settings/preferences",
+      label: t("preferences"),
+      description: t("settings_preferences_desc"),
+      icon: Sliders,
+    },
+    {
+      to: "/settings/blocked",
+      label: t("settings_blocked_label"),
+      description: t("settings_blocked_desc"),
+      icon: Shield,
+    },
+    {
+      to: "/settings/account",
+      label: t("settings_account_label"),
+      description: t("settings_account_desc"),
+      icon: UserCog,
+    },
   ];
 
   useEffect(() => {
@@ -75,7 +110,7 @@ function SettingsHubPage() {
   const initial = (profile.display_name || profile.username || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="max-w-xl space-y-4">
+    <div className="max-w-xl space-y-4 lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -97,7 +132,9 @@ function SettingsHubPage() {
       >
         <Avatar className="h-12 w-12 ring-2 ring-primary/40">
           <AvatarImage src={profile.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
+          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+            {initial}
+          </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{profile.display_name || profile.username}</p>
@@ -130,14 +167,18 @@ function SettingsHubPage() {
         <AvatarWithStatus status={presence.status} dotSize={11}>
           <Avatar className="h-10 w-10">
             <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+              {initial}
+            </AvatarFallback>
           </Avatar>
         </AvatarWithStatus>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">{t("status")}</span>
           <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
             <span className="shrink-0">{statusLabel(presence.status)}</span>
-            {presence.customStatus && <CustomStatusLine status={presence.customStatus} className="min-w-0" />}
+            {presence.customStatus && (
+              <CustomStatusLine status={presence.customStatus} className="min-w-0" />
+            )}
           </span>
         </span>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -164,7 +205,9 @@ function SettingsHubPage() {
                   </span>
                 )}
               </span>
-              <span className="block truncate text-xs text-muted-foreground mt-0.5">{section.description}</span>
+              <span className="block truncate text-xs text-muted-foreground mt-0.5">
+                {section.description}
+              </span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </Link>

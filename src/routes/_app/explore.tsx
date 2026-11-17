@@ -13,7 +13,11 @@ import { LiveNowRail } from "@/components/live/LiveNowRail";
 
 const RECENT_KEY = "rizz:recent-search";
 function loadRecent(): string[] {
-  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
 function pushRecent(s: string) {
   const list = [s, ...loadRecent().filter((x) => x !== s)].slice(0, 6);
@@ -27,11 +31,16 @@ export const Route = createFileRoute("/_app/explore")({
 
 function ExplorePage() {
   const [q, setQ] = useState("");
-  const [recent, setRecent] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadRecent()));
+  const [recent, setRecent] = useState<string[]>(() =>
+    typeof window === "undefined" ? [] : loadRecent(),
+  );
 
   useEffect(() => {
     if (!q.trim()) return;
-    const id = window.setTimeout(() => { pushRecent(q.trim()); setRecent(loadRecent()); }, 800);
+    const id = window.setTimeout(() => {
+      pushRecent(q.trim());
+      setRecent(loadRecent());
+    }, 800);
     return () => window.clearTimeout(id);
   }, [q]);
 
@@ -56,7 +65,9 @@ function ExplorePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("posts")
-        .select("id, media_url, media_type, like_count, author:profiles!posts_author_id_fkey(username)")
+        .select(
+          "id, media_url, media_type, like_count, author:profiles!posts_author_id_fkey(username)",
+        )
         .not("media_url", "is", null)
         .order("like_count", { ascending: false })
         .limit(9);
@@ -65,11 +76,18 @@ function ExplorePage() {
     },
   });
 
-  const trendingTags = useQuery({ queryKey: ["trending-tags"], queryFn: () => fetchTrendingTags(12) });
+  const trendingTags = useQuery({
+    queryKey: ["trending-tags"],
+    queryFn: () => fetchTrendingTags(12),
+  });
 
   return (
     <div>
-      <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-display text-xl sm:text-2xl font-bold tracking-tight mb-0.5 text-foreground">
+      <motion.h1
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="font-display text-xl sm:text-2xl font-bold tracking-tight mb-0.5 text-foreground"
+      >
         Explore
       </motion.h1>
       <p className="text-xs text-muted-foreground mb-4">Find your people. Find your vibes.</p>
@@ -83,7 +101,11 @@ function ExplorePage() {
           className="pl-10 border-border bg-card h-10 min-h-[40px]"
         />
         {q && (
-          <button onClick={() => setQ("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear">
+          <button
+            onClick={() => setQ("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear"
+          >
             <X className="h-4 w-4" />
           </button>
         )}
@@ -97,11 +119,23 @@ function ExplorePage() {
             <h2 className="flex items-center gap-1.5 font-display font-semibold text-xs text-muted-foreground">
               <Clock className="h-3.5 w-3.5" /> Recent
             </h2>
-            <button onClick={() => { localStorage.removeItem(RECENT_KEY); setRecent([]); }} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+            <button
+              onClick={() => {
+                localStorage.removeItem(RECENT_KEY);
+                setRecent([]);
+              }}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {recent.map((r) => (
-              <button key={r} onClick={() => setQ(r)} className="border border-border bg-card rounded-full px-3 py-1 text-xs hover:border-primary/40 transition-colors">
+              <button
+                key={r}
+                onClick={() => setQ(r)}
+                className="border border-border bg-card rounded-full px-3 py-1 text-xs hover:border-primary/40 transition-colors"
+              >
                 {r}
               </button>
             ))}
@@ -116,9 +150,16 @@ function ExplorePage() {
           </h2>
           <div className="flex flex-wrap gap-2">
             {trendingTags.data.map((t) => (
-              <Link key={t.tag} to="/tag/$tag" params={{ tag: t.tag }} className="border border-border bg-card rounded-full px-3 py-1 text-xs hover:border-primary/40 transition-colors flex items-center gap-1.5">
+              <Link
+                key={t.tag}
+                to="/tag/$tag"
+                params={{ tag: t.tag }}
+                className="border border-border bg-card rounded-full px-3 py-1 text-xs hover:border-primary/40 transition-colors flex items-center gap-1.5"
+              >
                 <span className="font-medium text-foreground">#{t.tag}</span>
-                <span className="text-[11px] text-muted-foreground">{formatNumber(t.post_count)}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {formatNumber(t.post_count)}
+                </span>
               </Link>
             ))}
           </div>
@@ -130,9 +171,12 @@ function ExplorePage() {
           <h2 className="flex items-center gap-1.5 font-display font-semibold text-base mb-2.5 text-foreground">
             <Flame className="h-4 w-4 text-primary" /> Trending
           </h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 lg:grid-cols-4 xl:grid-cols-5">
             {trending.data.map((p) => (
-              <div key={p.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border relative group">
+              <div
+                key={p.id}
+                className="aspect-square rounded-xl overflow-hidden bg-card border border-border relative group"
+              >
                 {p.media_type === "video" ? (
                   // A trending tile is a thumbnail, not a player: it needs the
                   // first frame and nothing else. Without `preload` the browser
@@ -147,10 +191,18 @@ function ExplorePage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <img src={p.media_url ?? ""} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                  <img
+                    src={p.media_url ?? ""}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  />
                 )}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                  <span className="text-xs font-medium text-white">❤ {formatNumber(p.like_count)}</span>
+                  <span className="text-xs font-medium text-white">
+                    ❤ {formatNumber(p.like_count)}
+                  </span>
                 </div>
               </div>
             ))}
@@ -159,8 +211,10 @@ function ExplorePage() {
       )}
 
       <section className="mb-4">
-        <h2 className="font-display font-semibold text-base mb-2.5 text-foreground">Top creators</h2>
-        <div className="space-y-2">
+        <h2 className="font-display font-semibold text-base mb-2.5 text-foreground">
+          Top creators
+        </h2>
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {search.data?.map((p) => (
             <ProfilePreviewTrigger
               key={p.id}
@@ -175,12 +229,16 @@ function ExplorePage() {
                 username={p.username}
               />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate text-foreground">{p.display_name || p.username}</p>
+                <p className="font-semibold text-sm truncate text-foreground">
+                  {p.display_name || p.username}
+                </p>
                 <p className="text-xs text-muted-foreground truncate">@{p.username}</p>
               </div>
               <div className="text-right">
                 <p className="text-[11px] text-muted-foreground">Paws</p>
-                <p className="font-display font-bold text-sm text-primary">{formatNumber(p.paw_balance)}</p>
+                <p className="font-display font-bold text-sm text-primary">
+                  {formatNumber(p.paw_balance)}
+                </p>
               </div>
             </ProfilePreviewTrigger>
           ))}

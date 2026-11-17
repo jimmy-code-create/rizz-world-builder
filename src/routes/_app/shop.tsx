@@ -156,7 +156,7 @@ function ShopPage() {
             <p className="mb-3 text-[12.5px] leading-5 text-muted-foreground">{category.blurb}</p>
 
             {catalogue.isLoading && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
@@ -173,7 +173,7 @@ function ShopPage() {
             )}
 
             {!catalogue.isLoading && !catalogue.isError && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {effects
                   .filter((effect) => effect.type === category.type)
                   .map((effect) => {
