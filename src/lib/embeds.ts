@@ -1,5 +1,7 @@
 /**
- * Discord-style embed cards for realm webhook bots.
+ * Bot cards for realm webhooks and built-in bots. The shapes Discord popularised
+ * are kept because bots expect them; the drawing is the app's own (see
+ * `components/chat/Embed`).
  *
  * One definition shared by the webhook route (server validation) and the
  * embed builder (client preview + preflight checks), so both sides enforce
@@ -71,7 +73,11 @@ export function isHexColor(value: unknown): value is string {
 /** Plain text only: strip tags, keep the words. */
 export function plainText(value: unknown, max: number): string {
   if (typeof value !== "string") return "";
-  return value.replace(/<[^>]*>/g, "").replace(/\0/g, "").trim().slice(0, max);
+  return value
+    .replace(/<[^>]*>/g, "")
+    .replace(/\0/g, "")
+    .trim()
+    .slice(0, max);
 }
 
 function httpsOrEmpty(value: unknown): string | undefined {
@@ -158,7 +164,8 @@ export function sanitizeEmbed(
     }
     const fields: EmbedField[] = [];
     for (const rawField of input.fields) {
-      if (!rawField || typeof rawField !== "object") return { error: "Each field needs a name and a value" };
+      if (!rawField || typeof rawField !== "object")
+        return { error: "Each field needs a name and a value" };
       const field = rawField as Record<string, unknown>;
       const name = plainText(field.name, EMBED_LIMITS.fieldName + 1);
       const value = plainText(field.value, EMBED_LIMITS.fieldValue + 1);
@@ -169,7 +176,11 @@ export function sanitizeEmbed(
       if (value.length > EMBED_LIMITS.fieldValue) {
         return { error: `Field values can be up to ${EMBED_LIMITS.fieldValue} characters` };
       }
-      fields.push({ name: take(name), value: take(value), ...(field.inline === true ? { inline: true } : {}) });
+      fields.push({
+        name: take(name),
+        value: take(value),
+        ...(field.inline === true ? { inline: true } : {}),
+      });
     }
     if (fields.length > 0) embed.fields = fields;
   }
